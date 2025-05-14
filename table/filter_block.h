@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "leveldb/slice.h"
+
 #include "util/hash.h"
 
 namespace leveldb {
@@ -35,8 +35,8 @@ class FilterBlockBuilder {
   FilterBlockBuilder& operator=(const FilterBlockBuilder&) = delete;
 
   void StartBlock(uint64_t block_offset);
-  void AddKey(const Slice& key);
-  Slice Finish();
+  void AddKey(const std::string_view& key);
+  std::string_view Finish();
 
  private:
   void GenerateFilter();
@@ -45,15 +45,15 @@ class FilterBlockBuilder {
   std::string keys_;             // Flattened key contents
   std::vector<size_t> start_;    // Starting index in keys_ of each key
   std::string result_;           // Filter data computed so far
-  std::vector<Slice> tmp_keys_;  // policy_->CreateFilter() argument
+  std::vector<std::string_view> tmp_keys_;  // policy_->CreateFilter() argument
   std::vector<uint32_t> filter_offsets_;
 };
 
 class FilterBlockReader {
  public:
   // REQUIRES: "contents" and *policy must stay live while *this is live.
-  FilterBlockReader(const FilterPolicy* policy, const Slice& contents);
-  bool KeyMayMatch(uint64_t block_offset, const Slice& key);
+  FilterBlockReader(const FilterPolicy* policy, const std::string_view& contents);
+  bool KeyMayMatch(uint64_t block_offset, const std::string_view& key);
 
  private:
   const FilterPolicy* policy_;

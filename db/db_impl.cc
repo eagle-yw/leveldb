@@ -425,7 +425,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
 
   // Read all the records and add to a memtable
   std::string scratch;
-  Slice record;
+  std::string_view record;
   WriteBatch batch;
   int compactions = 0;
   MemTable* mem = nullptr;
@@ -530,8 +530,8 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   // should not be added to the manifest.
   int level = 0;
   if (s.ok() && meta.file_size > 0) {
-    const Slice min_user_key = meta.smallest.user_key();
-    const Slice max_user_key = meta.largest.user_key();
+    const std::string_view min_user_key = meta.smallest.user_key();
+    const std::string_view max_user_key = meta.largest.user_key();
     if (base != nullptr) {
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
@@ -579,7 +579,7 @@ void DBImpl::CompactMemTable() {
   }
 }
 
-void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
+void DBImpl::CompactRange(const std::string_view* begin, const std::string_view* end) {
   int max_level_with_files = 1;
   {
     MutexLock l(&mutex_);
@@ -596,8 +596,8 @@ void DBImpl::CompactRange(const Slice* begin, const Slice* end) {
   }
 }
 
-void DBImpl::TEST_CompactRange(int level, const Slice* begin,
-                               const Slice* end) {
+void DBImpl::TEST_CompactRange(int level, const std::string_view* begin,
+                               const std::string_view* end) {
   assert(level >= 0);
   assert(level + 1 < config::kNumLevels);
 
@@ -937,7 +937,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       imm_micros += (env_->NowMicros() - imm_start);
     }
 
-    Slice key = input->key();
+    std::string_view key = input->key();
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != nullptr) {
       status = FinishCompactionOutputFile(compact, input);
@@ -955,7 +955,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       last_sequence_for_key = kMaxSequenceNumber;
     } else {
       if (!has_current_user_key ||
-          user_comparator()->Compare(ikey.user_key, Slice(current_user_key)) !=
+          user_comparator()->Compare(ikey.user_key, std::string_view(current_user_key)) !=
               0) {
         // First occurrence of this user key
         current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
@@ -1117,7 +1117,7 @@ int64_t DBImpl::TEST_MaxNextLevelOverlappingBytes() {
   return versions_->MaxNextLevelOverlappingBytes();
 }
 
-Status DBImpl::Get(const ReadOptions& options, const Slice& key,
+Status DBImpl::Get(const ReadOptions& options, const std::string_view& key,
                    std::string* value) {
   Status s;
   MutexLock l(&mutex_);
@@ -1176,7 +1176,7 @@ Iterator* DBImpl::NewIterator(const ReadOptions& options) {
                        seed);
 }
 
-void DBImpl::RecordReadSample(Slice key) {
+void DBImpl::RecordReadSample(std::string_view key) {
   MutexLock l(&mutex_);
   if (versions_->current()->RecordReadSample(key)) {
     MaybeScheduleCompaction();
@@ -1194,11 +1194,11 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 }
 
 // Convenience methods
-Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
+Status DBImpl::Put(const WriteOptions& o, const std::string_view& key, const std::string_view& val) {
   return DB::Put(o, key, val);
 }
 
-Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
+Status DBImpl::Delete(const WriteOptions& options, const std::string_view& key) {
   return DB::Delete(options, key);
 }
 
@@ -1403,12 +1403,12 @@ Status DBImpl::MakeRoomForWrite(bool force) {
   return s;
 }
 
-bool DBImpl::GetProperty(const Slice& property, std::string* value) {
+bool DBImpl::GetProperty(const std::string_view& property, std::string* value) {
   value->clear();
 
   MutexLock l(&mutex_);
-  Slice in = property;
-  Slice prefix("leveldb.");
+  std::string_view in = property;
+  std::string_view prefix("leveldb.");
   if (!in.starts_with(prefix)) return false;
   in.remove_prefix(prefix.size());
 
@@ -1485,13 +1485,13 @@ void DBImpl::GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
 
 // Default implementations of convenience methods that subclasses of DB
 // can call if they wish
-Status DB::Put(const WriteOptions& opt, const Slice& key, const Slice& value) {
+Status DB::Put(const WriteOptions& opt, const std::string_view& key, const std::string_view& value) {
   WriteBatch batch;
   batch.Put(key, value);
   return Write(opt, &batch);
 }
 
-Status DB::Delete(const WriteOptions& opt, const Slice& key) {
+Status DB::Delete(const WriteOptions& opt, const std::string_view& key) {
   WriteBatch batch;
   batch.Delete(key);
   return Write(opt, &batch);

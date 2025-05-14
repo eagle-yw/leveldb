@@ -91,12 +91,12 @@ Status TableBuilder::ChangeOptions(const Options& options) {
   return Status::OK();
 }
 
-void TableBuilder::Add(const Slice& key, const Slice& value) {
+void TableBuilder::Add(const std::string_view& key, const std::string_view& value) {
   Rep* r = rep_;
   assert(!r->closed);
   if (!ok()) return;
   if (r->num_entries > 0) {
-    assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
+    assert(r->options.comparator->Compare(key, std::string_view(r->last_key)) > 0);
   }
 
   if (r->pending_index_entry) {
@@ -104,7 +104,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
-    r->index_block.Add(r->last_key, Slice(handle_encoding));
+    r->index_block.Add(r->last_key, std::string_view(handle_encoding));
     r->pending_index_entry = false;
   }
 
@@ -145,9 +145,9 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   //    crc: uint32
   assert(ok());
   Rep* r = rep_;
-  Slice raw = block->Finish();
+  std::string_view raw = block->Finish();
 
-  Slice block_contents;
+  std::string_view block_contents;
   CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
   switch (type) {
@@ -189,7 +189,7 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   block->Reset();
 }
 
-void TableBuilder::WriteRawBlock(const Slice& block_contents,
+void TableBuilder::WriteRawBlock(const std::string_view& block_contents,
                                  CompressionType type, BlockHandle* handle) {
   Rep* r = rep_;
   handle->set_offset(r->offset);
@@ -201,7 +201,7 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
     uint32_t crc = crc32c::Value(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, trailer, 1);  // Extend crc to cover block type
     EncodeFixed32(trailer + 1, crc32c::Mask(crc));
-    r->status = r->file->Append(Slice(trailer, kBlockTrailerSize));
+    r->status = r->file->Append(std::string_view(trailer, kBlockTrailerSize));
     if (r->status.ok()) {
       r->offset += block_contents.size() + kBlockTrailerSize;
     }
@@ -246,7 +246,7 @@ Status TableBuilder::Finish() {
       r->options.comparator->FindShortSuccessor(&r->last_key);
       std::string handle_encoding;
       r->pending_handle.EncodeTo(&handle_encoding);
-      r->index_block.Add(r->last_key, Slice(handle_encoding));
+      r->index_block.Add(r->last_key, std::string_view(handle_encoding));
       r->pending_index_entry = false;
     }
     WriteBlock(&r->index_block, &index_block_handle);

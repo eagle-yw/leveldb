@@ -33,9 +33,9 @@ class VersionEdit {
 
   void Clear();
 
-  void SetComparatorName(const Slice& name) {
+  void SetComparatorName(const std::string_view& name) {
     has_comparator_ = true;
-    comparator_ = name.ToString();
+    comparator_.assign(name);
   }
   void SetLogNumber(uint64_t num) {
     has_log_number_ = true;
@@ -76,7 +76,7 @@ class VersionEdit {
   }
 
   void EncodeTo(std::string* dst) const;
-  Status DecodeFrom(const Slice& src);
+  Status DecodeFrom(const std::string_view& src);
 
   std::string DebugString() const;
 

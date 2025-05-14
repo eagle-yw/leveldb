@@ -95,7 +95,7 @@ TEST_F(MemEnvTest, ReadWrite) {
   WritableFile* writable_file;
   SequentialFile* seq_file;
   RandomAccessFile* rand_file;
-  Slice result;
+  std::string_view result;
   char scratch[100];
 
   ASSERT_LEVELDB_OK(env_->CreateDir("/dir"));
@@ -173,7 +173,7 @@ TEST_F(MemEnvTest, LargeWrite) {
   delete writable_file;
 
   SequentialFile* seq_file;
-  Slice result;
+  std::string_view result;
   ASSERT_LEVELDB_OK(env_->NewSequentialFile("/dir/f", &seq_file));
   ASSERT_LEVELDB_OK(seq_file->Read(3, &result, scratch));  // Read "foo".
   ASSERT_EQ(0, result.compare("foo"));
@@ -205,7 +205,7 @@ TEST_F(MemEnvTest, OverwriteOpenFile) {
 
   // Verify that overwriting an open file will result in the new file data
   // being read from files opened before the write.
-  Slice result;
+  std::string_view result;
   char scratch[kFileDataLen];
   ASSERT_LEVELDB_OK(rand_file->Read(0, kFileDataLen, &result, scratch));
   ASSERT_EQ(0, result.compare(kWrite2Data));
@@ -219,8 +219,8 @@ TEST_F(MemEnvTest, DBTest) {
   options.env = env_;
   DB* db;
 
-  const Slice keys[] = {Slice("aaa"), Slice("bbb"), Slice("ccc")};
-  const Slice vals[] = {Slice("foo"), Slice("bar"), Slice("baz")};
+  const std::string_view keys[] = {std::string_view("aaa"), std::string_view("bbb"), std::string_view("ccc")};
+  const std::string_view vals[] = {std::string_view("foo"), std::string_view("bar"), std::string_view("baz")};
 
   ASSERT_LEVELDB_OK(DB::Open(options, "/dir/db", &db));
   for (size_t i = 0; i < 3; ++i) {

@@ -46,18 +46,18 @@ class EmptyIterator : public Iterator {
   ~EmptyIterator() override = default;
 
   bool Valid() const override { return false; }
-  void Seek(const Slice& target) override {}
+  void Seek(const std::string_view& target) override {}
   void SeekToFirst() override {}
   void SeekToLast() override {}
   void Next() override { assert(false); }
   void Prev() override { assert(false); }
-  Slice key() const override {
+  std::string_view key() const override {
     assert(false);
-    return Slice();
+    return std::string_view();
   }
-  Slice value() const override {
+  std::string_view value() const override {
     assert(false);
-    return Slice();
+    return std::string_view();
   }
   Status status() const override { return status_; }
 

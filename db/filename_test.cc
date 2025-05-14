@@ -12,7 +12,7 @@
 namespace leveldb {
 
 TEST(FileNameTest, Parse) {
-  Slice db;
+  std::string_view db;
   FileType type;
   uint64_t number;
 

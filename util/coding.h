@@ -14,7 +14,7 @@
 #include <cstring>
 #include <string>
 
-#include "leveldb/slice.h"
+
 #include "port/port.h"
 
 namespace leveldb {
@@ -24,13 +24,13 @@ void PutFixed32(std::string* dst, uint32_t value);
 void PutFixed64(std::string* dst, uint64_t value);
 void PutVarint32(std::string* dst, uint32_t value);
 void PutVarint64(std::string* dst, uint64_t value);
-void PutLengthPrefixedSlice(std::string* dst, const Slice& value);
+void PutLengthPrefixedSlice(std::string* dst, const std::string_view& value);
 
-// Standard Get... routines parse a value from the beginning of a Slice
+// Standard Get... routines parse a value from the beginning of a std::string_view
 // and advance the slice past the parsed value.
-bool GetVarint32(Slice* input, uint32_t* value);
-bool GetVarint64(Slice* input, uint64_t* value);
-bool GetLengthPrefixedSlice(Slice* input, Slice* result);
+bool GetVarint32(std::string_view* input, uint32_t* value);
+bool GetVarint64(std::string_view* input, uint64_t* value);
+bool GetLengthPrefixedSlice(std::string_view* input, std::string_view* result);
 
 // Pointer-based variants of GetVarint...  These either store a value
 // in *v and return a pointer just past the parsed value, or return

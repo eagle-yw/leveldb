@@ -12,7 +12,6 @@
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
 #include "leveldb/filter_policy.h"
-#include "leveldb/slice.h"
 #include "leveldb/table_builder.h"
 #include "util/coding.h"
 #include "util/logging.h"
@@ -67,12 +66,12 @@ typedef uint64_t SequenceNumber;
 static const SequenceNumber kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
 struct ParsedInternalKey {
-  Slice user_key;
+  std::string_view user_key;
   SequenceNumber sequence;
   ValueType type;
 
   ParsedInternalKey() {}  // Intentionally left uninitialized (for speed)
-  ParsedInternalKey(const Slice& u, const SequenceNumber& seq, ValueType t)
+  ParsedInternalKey(const std::string_view& u, const SequenceNumber& seq, ValueType t)
       : user_key(u), sequence(seq), type(t) {}
   std::string DebugString() const;
 };
@@ -89,12 +88,12 @@ void AppendInternalKey(std::string* result, const ParsedInternalKey& key);
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
-bool ParseInternalKey(const Slice& internal_key, ParsedInternalKey* result);
+bool ParseInternalKey(const std::string_view& internal_key, ParsedInternalKey* result);
 
 // Returns the user key portion of an internal key.
-inline Slice ExtractUserKey(const Slice& internal_key) {
+inline std::string_view ExtractUserKey(const std::string_view& internal_key) {
   assert(internal_key.size() >= 8);
-  return Slice(internal_key.data(), internal_key.size() - 8);
+  return std::string_view(internal_key.data(), internal_key.size() - 8);
 }
 
 // A comparator for internal keys that uses a specified comparator for
@@ -106,9 +105,9 @@ class InternalKeyComparator : public Comparator {
  public:
   explicit InternalKeyComparator(const Comparator* c) : user_comparator_(c) {}
   const char* Name() const override;
-  int Compare(const Slice& a, const Slice& b) const override;
+  int Compare(const std::string_view& a, const std::string_view& b) const override;
   void FindShortestSeparator(std::string* start,
-                             const Slice& limit) const override;
+                             const std::string_view& limit) const override;
   void FindShortSuccessor(std::string* key) const override;
 
   const Comparator* user_comparator() const { return user_comparator_; }
@@ -124,8 +123,8 @@ class InternalFilterPolicy : public FilterPolicy {
  public:
   explicit InternalFilterPolicy(const FilterPolicy* p) : user_policy_(p) {}
   const char* Name() const override;
-  void CreateFilter(const Slice* keys, int n, std::string* dst) const override;
-  bool KeyMayMatch(const Slice& key, const Slice& filter) const override;
+  void CreateFilter(const std::string_view* keys, int n, std::string* dst) const override;
+  bool KeyMayMatch(const std::string_view& key, const std::string_view& filter) const override;
 };
 
 // Modules in this directory should keep internal keys wrapped inside
@@ -137,21 +136,21 @@ class InternalKey {
 
  public:
   InternalKey() {}  // Leave rep_ as empty to indicate it is invalid
-  InternalKey(const Slice& user_key, SequenceNumber s, ValueType t) {
+  InternalKey(const std::string_view& user_key, SequenceNumber s, ValueType t) {
     AppendInternalKey(&rep_, ParsedInternalKey(user_key, s, t));
   }
 
-  bool DecodeFrom(const Slice& s) {
+  bool DecodeFrom(const std::string_view& s) {
     rep_.assign(s.data(), s.size());
     return !rep_.empty();
   }
 
-  Slice Encode() const {
+  std::string_view Encode() const {
     assert(!rep_.empty());
     return rep_;
   }
 
-  Slice user_key() const { return ExtractUserKey(rep_); }
+  std::string_view user_key() const { return ExtractUserKey(rep_); }
 
   void SetFrom(const ParsedInternalKey& p) {
     rep_.clear();
@@ -168,7 +167,7 @@ inline int InternalKeyComparator::Compare(const InternalKey& a,
   return Compare(a.Encode(), b.Encode());
 }
 
-inline bool ParseInternalKey(const Slice& internal_key,
+inline bool ParseInternalKey(const std::string_view& internal_key,
                              ParsedInternalKey* result) {
   const size_t n = internal_key.size();
   if (n < 8) return false;
@@ -176,7 +175,7 @@ inline bool ParseInternalKey(const Slice& internal_key,
   uint8_t c = num & 0xff;
   result->sequence = num >> 8;
   result->type = static_cast<ValueType>(c);
-  result->user_key = Slice(internal_key.data(), n - 8);
+  result->user_key = std::string_view(internal_key.data(), n - 8);
   return (c <= static_cast<uint8_t>(kTypeValue));
 }
 
@@ -185,7 +184,7 @@ class LookupKey {
  public:
   // Initialize *this for looking up user_key at a snapshot with
   // the specified sequence number.
-  LookupKey(const Slice& user_key, SequenceNumber sequence);
+  LookupKey(const std::string_view& user_key, SequenceNumber sequence);
 
   LookupKey(const LookupKey&) = delete;
   LookupKey& operator=(const LookupKey&) = delete;
@@ -193,13 +192,13 @@ class LookupKey {
   ~LookupKey();
 
   // Return a key suitable for lookup in a MemTable.
-  Slice memtable_key() const { return Slice(start_, end_ - start_); }
+  std::string_view memtable_key() const { return std::string_view(start_, end_ - start_); }
 
   // Return an internal key (suitable for passing to an internal iterator)
-  Slice internal_key() const { return Slice(kstart_, end_ - kstart_); }
+  std::string_view internal_key() const { return std::string_view(kstart_, end_ - kstart_); }
 
   // Return the user key
-  Slice user_key() const { return Slice(kstart_, end_ - kstart_ - 8); }
+  std::string_view user_key() const { return std::string_view(kstart_, end_ - kstart_ - 8); }
 
  private:
   // We construct a char array of the form:

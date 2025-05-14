@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 
-#include "leveldb/slice.h"
+
 #include "leveldb/status.h"
 #include "leveldb/table_builder.h"
 
@@ -36,7 +36,7 @@ class BlockHandle {
   void set_size(uint64_t size) { size_ = size; }
 
   void EncodeTo(std::string* dst) const;
-  Status DecodeFrom(Slice* input);
+  Status DecodeFrom(std::string_view* input);
 
  private:
   uint64_t offset_;
@@ -63,7 +63,7 @@ class Footer {
   void set_index_handle(const BlockHandle& h) { index_handle_ = h; }
 
   void EncodeTo(std::string* dst) const;
-  Status DecodeFrom(Slice* input);
+  Status DecodeFrom(std::string_view* input);
 
  private:
   BlockHandle metaindex_handle_;
@@ -79,7 +79,7 @@ static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;
 static const size_t kBlockTrailerSize = 5;
 
 struct BlockContents {
-  Slice data;           // Actual contents of data
+  std::string_view data;           // Actual contents of data
   bool cachable;        // True iff data can be cached
   bool heap_allocated;  // True iff caller should delete[] data.data()
 };

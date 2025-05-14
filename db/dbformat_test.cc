@@ -31,15 +31,15 @@ static std::string ShortSuccessor(const std::string& s) {
 static void TestKey(const std::string& key, uint64_t seq, ValueType vt) {
   std::string encoded = IKey(key, seq, vt);
 
-  Slice in(encoded);
+  std::string_view in(encoded);
   ParsedInternalKey decoded("", 0, kTypeValue);
 
   ASSERT_TRUE(ParseInternalKey(in, &decoded));
-  ASSERT_EQ(key, decoded.user_key.ToString());
+  ASSERT_EQ(key, decoded.user_key);
   ASSERT_EQ(seq, decoded.sequence);
   ASSERT_EQ(vt, decoded.type);
 
-  ASSERT_TRUE(!ParseInternalKey(Slice("bar"), &decoded));
+  ASSERT_TRUE(!ParseInternalKey(std::string_view("bar"), &decoded));
 }
 
 TEST(FormatTest, InternalKey_EncodeDecode) {

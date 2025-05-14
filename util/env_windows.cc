@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "leveldb/env.h"
-#include "leveldb/slice.h"
+
 #include "port/port.h"
 #include "port/thread_annotations.h"
 #include "util/env_windows_test_helper.h"
@@ -169,7 +169,7 @@ class WindowsSequentialFile : public SequentialFile {
       : handle_(std::move(handle)), filename_(std::move(filename)) {}
   ~WindowsSequentialFile() override {}
 
-  Status Read(size_t n, Slice* result, char* scratch) override {
+  Status Read(size_t n, std::string_view* result, char* scratch) override {
     DWORD bytes_read;
     // DWORD is 32-bit, but size_t could technically be larger. However leveldb
     // files are limited to leveldb::Options::max_file_size which is clamped to
@@ -180,7 +180,7 @@ class WindowsSequentialFile : public SequentialFile {
       return WindowsError(filename_, ::GetLastError());
     }
 
-    *result = Slice(scratch, bytes_read);
+    *result = std::string_view(scratch, bytes_read);
     return Status::OK();
   }
 
@@ -205,7 +205,7 @@ class WindowsRandomAccessFile : public RandomAccessFile {
 
   ~WindowsRandomAccessFile() override = default;
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
+  Status Read(uint64_t offset, size_t n, std::string_view* result,
               char* scratch) const override {
     DWORD bytes_read = 0;
     OVERLAPPED overlapped = {0};
@@ -216,12 +216,12 @@ class WindowsRandomAccessFile : public RandomAccessFile {
                     &overlapped)) {
       DWORD error_code = ::GetLastError();
       if (error_code != ERROR_HANDLE_EOF) {
-        *result = Slice(scratch, 0);
+        *result = std::string_view(scratch, 0);
         return Status::IOError(filename_, GetWindowsErrorMessage(error_code));
       }
     }
 
-    *result = Slice(scratch, bytes_read);
+    *result = std::string_view(scratch, bytes_read);
     return Status::OK();
   }
 
@@ -245,14 +245,14 @@ class WindowsMmapReadableFile : public RandomAccessFile {
     mmap_limiter_->Release();
   }
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
+  Status Read(uint64_t offset, size_t n, std::string_view* result,
               char* scratch) const override {
     if (offset + n > length_) {
-      *result = Slice();
+      *result = std::string_view();
       return WindowsError(filename_, ERROR_INVALID_PARAMETER);
     }
 
-    *result = Slice(mmap_base_ + offset, n);
+    *result = std::string_view(mmap_base_ + offset, n);
     return Status::OK();
   }
 
@@ -270,7 +270,7 @@ class WindowsWritableFile : public WritableFile {
 
   ~WindowsWritableFile() override = default;
 
-  Status Append(const Slice& data) override {
+  Status Append(const std::string_view& data) override {
     size_t write_size = data.size();
     const char* write_data = data.data();
 

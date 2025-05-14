@@ -139,7 +139,7 @@ class RecoveryTest : public testing::Test {
   void CompactMemTable() { dbfull()->TEST_CompactMemTable(); }
 
   // Directly construct a log file that sets key to val.
-  void MakeLogFile(uint64_t lognum, SequenceNumber seq, Slice key, Slice val) {
+  void MakeLogFile(uint64_t lognum, SequenceNumber seq, std::string_view key, std::string_view val) {
     std::string fname = LogFileName(dbname_, lognum);
     WritableFile* file;
     ASSERT_LEVELDB_OK(env_->NewWritableFile(fname, &file));

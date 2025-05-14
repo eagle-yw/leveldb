@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <string>
 
-#include "leveldb/slice.h"
 #include "leveldb/status.h"
 #include "port/port.h"
 

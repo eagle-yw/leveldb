@@ -11,12 +11,12 @@
 namespace leveldb {
 namespace test {
 
-Slice RandomString(Random* rnd, int len, std::string* dst) {
+std::string_view RandomString(Random* rnd, int len, std::string* dst) {
   dst->resize(len);
   for (int i = 0; i < len; i++) {
     (*dst)[i] = static_cast<char>(' ' + rnd->Uniform(95));  // ' ' .. '~'
   }
-  return Slice(*dst);
+  return std::string_view(*dst);
 }
 
 std::string RandomKey(Random* rnd, int len) {
@@ -31,7 +31,7 @@ std::string RandomKey(Random* rnd, int len) {
   return result;
 }
 
-Slice CompressibleString(Random* rnd, double compressed_fraction, size_t len,
+std::string_view CompressibleString(Random* rnd, double compressed_fraction, size_t len,
                          std::string* dst) {
   int raw = static_cast<int>(len * compressed_fraction);
   if (raw < 1) raw = 1;
@@ -44,7 +44,7 @@ Slice CompressibleString(Random* rnd, double compressed_fraction, size_t len,
     dst->append(raw_data);
   }
   dst->resize(len);
-  return Slice(*dst);
+  return std::string_view(*dst);
 }
 
 }  // namespace test

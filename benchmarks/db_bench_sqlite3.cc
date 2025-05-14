@@ -137,17 +137,17 @@ class RandomGenerator {
     pos_ = 0;
   }
 
-  Slice Generate(int len) {
+  std::string_view Generate(int len) {
     if (pos_ + len > data_.size()) {
       pos_ = 0;
       assert(len < data_.size());
     }
     pos_ += len;
-    return Slice(data_.data() + pos_ - len, len);
+    return std::string_view(data_.data() + pos_ - len, len);
   }
 };
 
-static Slice TrimSpace(Slice s) {
+static std::string_view TrimSpace(std::string_view s) {
   int start = 0;
   while (start < s.size() && isspace(s[start])) {
     start++;
@@ -156,7 +156,7 @@ static Slice TrimSpace(Slice s) {
   while (limit > start && isspace(s[limit - 1])) {
     limit--;
   }
-  return Slice(s.data() + start, limit - start);
+  return std::string_view(s.data() + start, limit - start);
 }
 
 }  // namespace
@@ -224,13 +224,13 @@ class Benchmark {
         if (sep == nullptr) {
           continue;
         }
-        Slice key = TrimSpace(Slice(line, sep - 1 - line));
-        Slice val = TrimSpace(Slice(sep + 1));
+        std::string_view key = TrimSpace(std::string_view(line, sep - 1 - line));
+        std::string_view val = TrimSpace(std::string_view(sep + 1));
         if (key == "model name") {
           ++num_cpus;
-          cpu_type = val.ToString();
+          cpu_type = val;
         } else if (key == "cache size") {
-          cache_size = val.ToString();
+          cache_size = val;
         }
       }
       std::fclose(cpuinfo);
@@ -283,7 +283,7 @@ class Benchmark {
     }
   }
 
-  void Stop(const Slice& name) {
+  void Stop(const std::string_view& name) {
     double finish = Env::Default()->NowMicros() * 1e-6;
 
     // Pretend at least one op was done in case we are running a benchmark
@@ -302,7 +302,7 @@ class Benchmark {
     }
 
     std::fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
-                 name.ToString().c_str(), (finish - start_) * 1e6 / done_,
+                 name.data(), (finish - start_) * 1e6 / done_,
                  (message_.empty() ? "" : " "), message_.c_str());
     if (FLAGS_histogram) {
       std::fprintf(stdout, "Microseconds per op:\n%s\n",
@@ -328,7 +328,7 @@ class Benchmark {
     Env::Default()->GetChildren(test_dir, &files);
     if (!FLAGS_use_existing_db) {
       for (int i = 0; i < files.size(); i++) {
-        if (Slice(files[i]).starts_with("dbbench_sqlite3")) {
+        if (std::string_view(files[i]).starts_with("dbbench_sqlite3")) {
           std::string file_name(test_dir);
           file_name += "/";
           file_name += files[i];
@@ -350,12 +350,12 @@ class Benchmark {
     const char* benchmarks = FLAGS_benchmarks;
     while (benchmarks != nullptr) {
       const char* sep = strchr(benchmarks, ',');
-      Slice name;
+      std::string_view name;
       if (sep == nullptr) {
         name = benchmarks;
         benchmarks = nullptr;
       } else {
-        name = Slice(benchmarks, sep - benchmarks);
+        name = std::string_view(benchmarks, sep - benchmarks);
         benchmarks = sep + 1;
       }
 
@@ -364,52 +364,52 @@ class Benchmark {
 
       bool known = true;
       bool write_sync = false;
-      if (name == Slice("fillseq")) {
+      if (name == std::string_view("fillseq")) {
         Write(write_sync, SEQUENTIAL, FRESH, num_, FLAGS_value_size, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillseqbatch")) {
+      } else if (name == std::string_view("fillseqbatch")) {
         Write(write_sync, SEQUENTIAL, FRESH, num_, FLAGS_value_size, 1000);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillrandom")) {
+      } else if (name == std::string_view("fillrandom")) {
         Write(write_sync, RANDOM, FRESH, num_, FLAGS_value_size, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillrandbatch")) {
+      } else if (name == std::string_view("fillrandbatch")) {
         Write(write_sync, RANDOM, FRESH, num_, FLAGS_value_size, 1000);
         WalCheckpoint(db_);
-      } else if (name == Slice("overwrite")) {
+      } else if (name == std::string_view("overwrite")) {
         Write(write_sync, RANDOM, EXISTING, num_, FLAGS_value_size, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("overwritebatch")) {
+      } else if (name == std::string_view("overwritebatch")) {
         Write(write_sync, RANDOM, EXISTING, num_, FLAGS_value_size, 1000);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillrandsync")) {
+      } else if (name == std::string_view("fillrandsync")) {
         write_sync = true;
         Write(write_sync, RANDOM, FRESH, num_ / 100, FLAGS_value_size, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillseqsync")) {
+      } else if (name == std::string_view("fillseqsync")) {
         write_sync = true;
         Write(write_sync, SEQUENTIAL, FRESH, num_ / 100, FLAGS_value_size, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillrand100K")) {
+      } else if (name == std::string_view("fillrand100K")) {
         Write(write_sync, RANDOM, FRESH, num_ / 1000, 100 * 1000, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("fillseq100K")) {
+      } else if (name == std::string_view("fillseq100K")) {
         Write(write_sync, SEQUENTIAL, FRESH, num_ / 1000, 100 * 1000, 1);
         WalCheckpoint(db_);
-      } else if (name == Slice("readseq")) {
+      } else if (name == std::string_view("readseq")) {
         ReadSequential();
-      } else if (name == Slice("readrandom")) {
+      } else if (name == std::string_view("readrandom")) {
         Read(RANDOM, 1);
-      } else if (name == Slice("readrand100K")) {
+      } else if (name == std::string_view("readrand100K")) {
         int n = reads_;
         reads_ /= 1000;
         Read(RANDOM, 1);
         reads_ = n;
       } else {
         known = false;
-        if (name != Slice()) {  // No error message for empty name
+        if (name != std::string_view()) {  // No error message for empty name
           std::fprintf(stderr, "unknown benchmark '%s'\n",
-                       name.ToString().c_str());
+                       name.data());
         }
       }
       if (known) {
@@ -677,7 +677,7 @@ int main(int argc, char** argv) {
     double d;
     int n;
     char junk;
-    if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
+    if (std::string_view(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
@@ -696,7 +696,7 @@ int main(int argc, char** argv) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
       FLAGS_value_size = n;
-    } else if (leveldb::Slice(argv[i]) == leveldb::Slice("--no_transaction")) {
+    } else if (std::string_view(argv[i]) == std::string_view("--no_transaction")) {
       FLAGS_transaction = false;
     } else if (sscanf(argv[i], "--page_size=%d%c", &n, &junk) == 1) {
       FLAGS_page_size = n;

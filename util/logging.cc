@@ -10,7 +10,7 @@
 #include <limits>
 
 #include "leveldb/env.h"
-#include "leveldb/slice.h"
+
 
 namespace leveldb {
 
@@ -20,7 +20,7 @@ void AppendNumberTo(std::string* str, uint64_t num) {
   str->append(buf);
 }
 
-void AppendEscapedStringTo(std::string* str, const Slice& value) {
+void AppendEscapedStringTo(std::string* str, const std::string_view& value) {
   for (size_t i = 0; i < value.size(); i++) {
     char c = value[i];
     if (c >= ' ' && c <= '~') {
@@ -40,13 +40,13 @@ std::string NumberToString(uint64_t num) {
   return r;
 }
 
-std::string EscapeString(const Slice& value) {
+std::string EscapeString(const std::string_view& value) {
   std::string r;
   AppendEscapedStringTo(&r, value);
   return r;
 }
 
-bool ConsumeDecimalNumber(Slice* in, uint64_t* val) {
+bool ConsumeDecimalNumber(std::string_view* in, uint64_t* val) {
   // Constants that will be optimized away.
   constexpr const uint64_t kMaxUint64 = std::numeric_limits<uint64_t>::max();
   constexpr const char kLastDigitOfMaxUint64 =

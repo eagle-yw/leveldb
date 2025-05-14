@@ -29,7 +29,7 @@
 #include <utility>
 
 #include "leveldb/env.h"
-#include "leveldb/slice.h"
+
 #include "leveldb/status.h"
 #include "port/port.h"
 #include "port/thread_annotations.h"
@@ -139,7 +139,7 @@ class PosixSequentialFile final : public SequentialFile {
       : fd_(fd), filename_(std::move(filename)) {}
   ~PosixSequentialFile() override { close(fd_); }
 
-  Status Read(size_t n, Slice* result, char* scratch) override {
+  Status Read(size_t n, std::string_view* result, char* scratch) override {
     Status status;
     while (true) {
       ::ssize_t read_size = ::read(fd_, scratch, n);
@@ -150,7 +150,7 @@ class PosixSequentialFile final : public SequentialFile {
         status = PosixError(filename_, errno);
         break;
       }
-      *result = Slice(scratch, read_size);
+      *result = std::string_view(scratch, read_size);
       break;
     }
     return status;
@@ -196,7 +196,7 @@ class PosixRandomAccessFile final : public RandomAccessFile {
     }
   }
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
+  Status Read(uint64_t offset, size_t n, std::string_view* result,
               char* scratch) const override {
     int fd = fd_;
     if (!has_permanent_fd_) {
@@ -210,7 +210,7 @@ class PosixRandomAccessFile final : public RandomAccessFile {
 
     Status status;
     ssize_t read_size = ::pread(fd, scratch, n, static_cast<off_t>(offset));
-    *result = Slice(scratch, (read_size < 0) ? 0 : read_size);
+    *result = std::string_view(scratch, (read_size < 0) ? 0 : read_size);
     if (read_size < 0) {
       // An error: return a non-ok status.
       status = PosixError(filename_, errno);
@@ -256,14 +256,14 @@ class PosixMmapReadableFile final : public RandomAccessFile {
     mmap_limiter_->Release();
   }
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
+  Status Read(uint64_t offset, size_t n, std::string_view* result,
               char* scratch) const override {
     if (offset + n > length_) {
-      *result = Slice();
+      *result = std::string_view();
       return PosixError(filename_, EINVAL);
     }
 
-    *result = Slice(mmap_base_ + offset, n);
+    *result = std::string_view(mmap_base_ + offset, n);
     return Status::OK();
   }
 
@@ -290,7 +290,7 @@ class PosixWritableFile final : public WritableFile {
     }
   }
 
-  Status Append(const Slice& data) override {
+  Status Append(const std::string_view& data) override {
     size_t write_size = data.size();
     const char* write_data = data.data();
 
@@ -434,18 +434,18 @@ class PosixWritableFile final : public WritableFile {
 
   // Extracts the file name from a path pointing to a file.
   //
-  // The returned Slice points to |filename|'s data buffer, so it is only valid
+  // The returned std::string_view points to |filename|'s data buffer, so it is only valid
   // while |filename| is alive and unchanged.
-  static Slice Basename(const std::string& filename) {
+  static std::string_view Basename(const std::string& filename) {
     std::string::size_type separator_pos = filename.rfind('/');
     if (separator_pos == std::string::npos) {
-      return Slice(filename);
+      return std::string_view(filename);
     }
     // The filename component should not contain a path separator. If it does,
     // the splitting was done incorrectly.
     assert(filename.find('/', separator_pos + 1) == std::string::npos);
 
-    return Slice(filename.data() + separator_pos + 1,
+    return std::string_view(filename.data() + separator_pos + 1,
                  filename.length() - separator_pos - 1);
   }
 

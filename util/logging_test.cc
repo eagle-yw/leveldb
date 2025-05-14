@@ -8,7 +8,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "leveldb/slice.h"
+
 
 namespace leveldb {
 
@@ -41,8 +41,8 @@ void ConsumeDecimalNumberRoundtripTest(uint64_t number,
                                        const std::string& padding = "") {
   std::string decimal_number = NumberToString(number);
   std::string input_string = decimal_number + padding;
-  Slice input(input_string);
-  Slice output = input;
+  std::string_view input(input_string);
+  std::string_view output = input;
   uint64_t result;
   ASSERT_TRUE(ConsumeDecimalNumber(&output, &result));
   ASSERT_EQ(number, result);
@@ -91,8 +91,8 @@ TEST(Logging, ConsumeDecimalNumberRoundtripWithPadding) {
 }
 
 void ConsumeDecimalNumberOverflowTest(const std::string& input_string) {
-  Slice input(input_string);
-  Slice output = input;
+  std::string_view input(input_string);
+  std::string_view output = input;
   uint64_t result;
   ASSERT_EQ(false, ConsumeDecimalNumber(&output, &result));
 }
@@ -118,8 +118,8 @@ TEST(Logging, ConsumeDecimalNumberOverflow) {
 }
 
 void ConsumeDecimalNumberNoDigitsTest(const std::string& input_string) {
-  Slice input(input_string);
-  Slice output = input;
+  std::string_view input(input_string);
+  std::string_view output = input;
   uint64_t result;
   ASSERT_EQ(false, ConsumeDecimalNumber(&output, &result));
   ASSERT_EQ(input.data(), output.data());

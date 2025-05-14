@@ -16,7 +16,7 @@ struct TableAndFile {
   Table* table;
 };
 
-static void DeleteEntry(const Slice& key, void* value) {
+static void DeleteEntry(const std::string_view& key, void* value) {
   TableAndFile* tf = reinterpret_cast<TableAndFile*>(value);
   delete tf->table;
   delete tf->file;
@@ -43,7 +43,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   Status s;
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
-  Slice key(buf, sizeof(buf));
+  std::string_view key(buf, sizeof(buf));
   *handle = cache_->Lookup(key);
   if (*handle == nullptr) {
     std::string fname = TableFileName(dbname_, file_number);
@@ -98,9 +98,9 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 }
 
 Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
-                       uint64_t file_size, const Slice& k, void* arg,
-                       void (*handle_result)(void*, const Slice&,
-                                             const Slice&)) {
+                       uint64_t file_size, const std::string_view& k, void* arg,
+                       void (*handle_result)(void*, const std::string_view&,
+                                             const std::string_view&)) {
   Cache::Handle* handle = nullptr;
   Status s = FindTable(file_number, file_size, &handle);
   if (s.ok()) {
@@ -114,7 +114,7 @@ Status TableCache::Get(const ReadOptions& options, uint64_t file_number,
 void TableCache::Evict(uint64_t file_number) {
   char buf[sizeof(file_number)];
   EncodeFixed64(buf, file_number);
-  cache_->Erase(Slice(buf, sizeof(buf)));
+  cache_->Erase(std::string_view(buf, sizeof(buf)));
 }
 
 }  // namespace leveldb

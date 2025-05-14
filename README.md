@@ -232,9 +232,6 @@ an iterator from a DB object.
 * **include/leveldb/write_batch.h**: Interface for atomically applying multiple
 updates to a database.
 
-* **include/leveldb/slice.h**: A simple module for maintaining a pointer and a
-length into some other byte array.
-
 * **include/leveldb/status.h**: Status is returned from many of the public interfaces
 and is used to report success and various kinds of errors.
 

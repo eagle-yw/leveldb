@@ -13,7 +13,7 @@ namespace {
 
 class StdoutPrinter : public WritableFile {
  public:
-  Status Append(const Slice& data) override {
+  Status Append(const std::string_view& data) override {
     fwrite(data.data(), 1, data.size(), stdout);
     return Status::OK();
   }

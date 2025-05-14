@@ -47,7 +47,7 @@ void Log(Logger* info_log, const char* format, ...) {
   }
 }
 
-static Status DoWriteStringToFile(Env* env, const Slice& data,
+static Status DoWriteStringToFile(Env* env, const std::string_view& data,
                                   const std::string& fname, bool should_sync) {
   WritableFile* file;
   Status s = env->NewWritableFile(fname, &file);
@@ -68,12 +68,12 @@ static Status DoWriteStringToFile(Env* env, const Slice& data,
   return s;
 }
 
-Status WriteStringToFile(Env* env, const Slice& data,
+Status WriteStringToFile(Env* env, const std::string_view& data,
                          const std::string& fname) {
   return DoWriteStringToFile(env, data, fname, false);
 }
 
-Status WriteStringToFileSync(Env* env, const Slice& data,
+Status WriteStringToFileSync(Env* env, const std::string_view& data,
                              const std::string& fname) {
   return DoWriteStringToFile(env, data, fname, true);
 }
@@ -88,7 +88,7 @@ Status ReadFileToString(Env* env, const std::string& fname, std::string* data) {
   static const int kBufferSize = 8192;
   char* space = new char[kBufferSize];
   while (true) {
-    Slice fragment;
+    std::string_view fragment;
     s = file->Read(kBufferSize, &fragment, space);
     if (!s.ok()) {
       break;

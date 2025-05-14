@@ -6,7 +6,7 @@
 #define STORAGE_LEVELDB_TABLE_ITERATOR_WRAPPER_H_
 
 #include "leveldb/iterator.h"
-#include "leveldb/slice.h"
+
 
 namespace leveldb {
 
@@ -35,11 +35,11 @@ class IteratorWrapper {
 
   // Iterator interface methods
   bool Valid() const { return valid_; }
-  Slice key() const {
+  std::string_view key() const {
     assert(Valid());
     return key_;
   }
-  Slice value() const {
+  std::string_view value() const {
     assert(Valid());
     return iter_->value();
   }
@@ -58,7 +58,7 @@ class IteratorWrapper {
     iter_->Prev();
     Update();
   }
-  void Seek(const Slice& k) {
+  void Seek(const std::string_view& k) {
     assert(iter_);
     iter_->Seek(k);
     Update();
@@ -84,7 +84,7 @@ class IteratorWrapper {
 
   Iterator* iter_;
   bool valid_;
-  Slice key_;
+  std::string_view key_;
 };
 
 }  // namespace leveldb

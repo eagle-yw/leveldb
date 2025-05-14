@@ -7,6 +7,8 @@
 #include <atomic>
 #include <cinttypes>
 #include <string>
+#include <string_view>
+#include <format>
 
 #include "gtest/gtest.h"
 #include "db/db_impl.h"
@@ -164,7 +166,7 @@ class SpecialEnv : public EnvWrapper {
           : env_(env), base_(base), fname_(fname) {}
 
       ~DataFile() { delete base_; }
-      Status Append(const Slice& data) {
+      Status Append(const std::string_view& data) {
         if (env_->no_space_.load(std::memory_order_acquire)) {
           // Drop writes on the floor
           return Status::OK();
@@ -199,7 +201,7 @@ class SpecialEnv : public EnvWrapper {
      public:
       ManifestFile(SpecialEnv* env, WritableFile* b) : env_(env), base_(b) {}
       ~ManifestFile() { delete base_; }
-      Status Append(const Slice& data) {
+      Status Append(const std::string_view& data) {
         if (env_->manifest_write_error_.load(std::memory_order_acquire)) {
           return Status::IOError("simulated writer error");
         } else {
@@ -242,7 +244,7 @@ class SpecialEnv : public EnvWrapper {
       CountingFile(RandomAccessFile* target, AtomicCounter* counter)
           : target_(target), counter_(counter) {}
       ~CountingFile() override { delete target_; }
-      Status Read(uint64_t offset, size_t n, Slice* result,
+      Status Read(uint64_t offset, size_t n, std::string_view* result,
                   char* scratch) const override {
         counter_->Increment();
         return target_->Read(offset, n, result, scratch);
@@ -391,7 +393,7 @@ class DBTest : public testing::Test {
     return result;
   }
 
-  std::string AllEntriesFor(const Slice& user_key) {
+  std::string AllEntriesFor(const std::string_view& user_key) {
     Iterator* iter = dbfull()->TEST_NewInternalIterator();
     InternalKey target(user_key, kMaxSequenceNumber, kTypeValue);
     iter->Seek(target.Encode());
@@ -415,7 +417,7 @@ class DBTest : public testing::Test {
           first = false;
           switch (ikey.type) {
             case kTypeValue:
-              result += iter->value().ToString();
+              result += iter->value();
               break;
             case kTypeDeletion:
               result += "DEL";
@@ -471,14 +473,14 @@ class DBTest : public testing::Test {
     return static_cast<int>(files.size());
   }
 
-  uint64_t Size(const Slice& start, const Slice& limit) {
+  uint64_t Size(const std::string_view& start, const std::string_view& limit) {
     Range r(start, limit);
     uint64_t size;
     db_->GetApproximateSizes(&r, 1, &size);
     return size;
   }
 
-  void Compact(const Slice& start, const Slice& limit) {
+  void Compact(const std::string_view& start, const std::string_view& limit) {
     db_->CompactRange(&start, &limit);
   }
 
@@ -521,7 +523,7 @@ class DBTest : public testing::Test {
   std::string IterStatus(Iterator* iter) {
     std::string result;
     if (iter->Valid()) {
-      result = iter->key().ToString() + "->" + iter->value().ToString();
+      result = std::format("{}->{}", iter->key(), iter->value());
     } else {
       result = "(invalid)";
     }
@@ -1271,8 +1273,8 @@ TEST_F(DBTest, ApproximateSizes) {
 
         std::string cstart_str = Key(compact_start);
         std::string cend_str = Key(compact_start + 9);
-        Slice cstart = cstart_str;
-        Slice cend = cend_str;
+        std::string_view cstart = cstart_str;
+        std::string_view cend = cend_str;
         dbfull()->TEST_CompactRange(0, &cstart, &cend);
       }
 
@@ -1341,8 +1343,8 @@ TEST_F(DBTest, IteratorPinsRef) {
 
   iter->SeekToFirst();
   ASSERT_TRUE(iter->Valid());
-  ASSERT_EQ("foo", iter->key().ToString());
-  ASSERT_EQ("hello", iter->value().ToString());
+  ASSERT_EQ("foo", iter->key());
+  ASSERT_EQ("hello", iter->value());
   iter->Next();
   ASSERT_TRUE(!iter->Valid());
   delete iter;
@@ -1396,7 +1398,7 @@ TEST_F(DBTest, HiddenValuesAreRemoved) {
     ASSERT_TRUE(Between(Size("", "pastfoo"), 50000, 60000));
     db_->ReleaseSnapshot(snapshot);
     ASSERT_EQ(AllEntriesFor("foo"), "[ tiny, " + big + " ]");
-    Slice x("x");
+    std::string_view x("x");
     dbfull()->TEST_CompactRange(0, nullptr, &x);
     ASSERT_EQ(AllEntriesFor("foo"), "[ tiny ]");
     ASSERT_EQ(NumTableFilesAtLevel(0), 0);
@@ -1426,7 +1428,7 @@ TEST_F(DBTest, DeletionMarkers1) {
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
   ASSERT_LEVELDB_OK(dbfull()->TEST_CompactMemTable());  // Moves to level last-2
   ASSERT_EQ(AllEntriesFor("foo"), "[ v2, DEL, v1 ]");
-  Slice z("z");
+  std::string_view z("z");
   dbfull()->TEST_CompactRange(last - 2, nullptr, &z);
   // DEL eliminated, but v1 remains because we aren't compacting that level
   // (DEL can be eliminated because v2 hides v1).
@@ -1561,10 +1563,10 @@ TEST_F(DBTest, ComparatorCheck) {
   class NewComparator : public Comparator {
    public:
     const char* Name() const override { return "leveldb.NewComparator"; }
-    int Compare(const Slice& a, const Slice& b) const override {
+    int Compare(const std::string_view& a, const std::string_view& b) const override {
       return BytewiseComparator()->Compare(a, b);
     }
-    void FindShortestSeparator(std::string* s, const Slice& l) const override {
+    void FindShortestSeparator(std::string* s, const std::string_view& l) const override {
       BytewiseComparator()->FindShortestSeparator(s, l);
     }
     void FindShortSuccessor(std::string* key) const override {
@@ -1584,10 +1586,10 @@ TEST_F(DBTest, CustomComparator) {
   class NumberComparator : public Comparator {
    public:
     const char* Name() const override { return "test.NumberComparator"; }
-    int Compare(const Slice& a, const Slice& b) const override {
+    int Compare(const std::string_view& a, const std::string_view& b) const override {
       return ToNumber(a) - ToNumber(b);
     }
-    void FindShortestSeparator(std::string* s, const Slice& l) const override {
+    void FindShortestSeparator(std::string* s, const std::string_view& l) const override {
       ToNumber(*s);  // Check format
       ToNumber(l);   // Check format
     }
@@ -1596,13 +1598,13 @@ TEST_F(DBTest, CustomComparator) {
     }
 
    private:
-    static int ToNumber(const Slice& x) {
+    static int ToNumber(const std::string_view& x) {
       // Check that there are no extra characters.
       EXPECT_TRUE(x.size() >= 2 && x[0] == '[' && x[x.size() - 1] == ']')
           << EscapeString(x);
       int val;
       char ignored;
-      EXPECT_TRUE(sscanf(x.ToString().c_str(), "[%i]%c", &val, &ignored) == 1)
+      EXPECT_TRUE(sscanf(std::string(x).c_str(), "[%i]%c", &val, &ignored) == 1)
           << EscapeString(x);
       return val;
     }
@@ -2044,10 +2046,10 @@ static void MTThreadBody(void* arg) {
       // We add some padding for force compactions.
       std::snprintf(valbuf, sizeof(valbuf), "%d.%d.%-1000d", key, id,
                     static_cast<int>(counter));
-      ASSERT_LEVELDB_OK(db->Put(WriteOptions(), Slice(keybuf), Slice(valbuf)));
+      ASSERT_LEVELDB_OK(db->Put(WriteOptions(), std::string_view(keybuf), std::string_view(valbuf)));
     } else {
       // Read a value and verify that it matches the pattern written above.
-      Status s = db->Get(ReadOptions(), Slice(keybuf), &value);
+      Status s = db->Get(ReadOptions(), std::string_view(keybuf), &value);
       if (s.IsNotFound()) {
         // Key has not yet been written
       } else {
@@ -2114,13 +2116,13 @@ class ModelDB : public DB {
 
   explicit ModelDB(const Options& options) : options_(options) {}
   ~ModelDB() override = default;
-  Status Put(const WriteOptions& o, const Slice& k, const Slice& v) override {
+  Status Put(const WriteOptions& o, const std::string_view& k, const std::string_view& v) override {
     return DB::Put(o, k, v);
   }
-  Status Delete(const WriteOptions& o, const Slice& key) override {
+  Status Delete(const WriteOptions& o, const std::string_view& key) override {
     return DB::Delete(o, key);
   }
-  Status Get(const ReadOptions& options, const Slice& key,
+  Status Get(const ReadOptions& options, const std::string_view& key,
              std::string* value) override {
     assert(false);  // Not implemented
     return Status::NotFound(key);
@@ -2149,17 +2151,17 @@ class ModelDB : public DB {
     class Handler : public WriteBatch::Handler {
      public:
       KVMap* map_;
-      void Put(const Slice& key, const Slice& value) override {
-        (*map_)[key.ToString()] = value.ToString();
+      void Put(const std::string_view& key, const std::string_view& value) override {
+        (*map_)[std::string(key)] = value;
       }
-      void Delete(const Slice& key) override { map_->erase(key.ToString()); }
+      void Delete(const std::string_view& key) override { map_->erase(std::string(key)); }
     };
     Handler handler;
     handler.map_ = &map_;
     return batch->Iterate(&handler);
   }
 
-  bool GetProperty(const Slice& property, std::string* value) override {
+  bool GetProperty(const std::string_view& property, std::string* value) override {
     return false;
   }
   void GetApproximateSizes(const Range* r, int n, uint64_t* sizes) override {
@@ -2167,7 +2169,7 @@ class ModelDB : public DB {
       sizes[i] = 0;
     }
   }
-  void CompactRange(const Slice* start, const Slice* end) override {}
+  void CompactRange(const std::string_view* start, const std::string_view* end) override {}
 
  private:
   class ModelIter : public Iterator {
@@ -2186,13 +2188,13 @@ class ModelDB : public DB {
         iter_ = map_->find(map_->rbegin()->first);
       }
     }
-    void Seek(const Slice& k) override {
-      iter_ = map_->lower_bound(k.ToString());
+    void Seek(const std::string_view& k) override {
+      iter_ = map_->lower_bound(std::string(k));
     }
     void Next() override { ++iter_; }
     void Prev() override { --iter_; }
-    Slice key() const override { return iter_->first; }
-    Slice value() const override { return iter_->second; }
+    std::string_view key() const override { return iter_->first; }
+    std::string_view value() const override { return iter_->second; }
     Status status() const override { return Status::OK(); }
 
    private:
@@ -2239,7 +2241,7 @@ static bool CompareIterators(int step, DB* model, DB* db,
     }
 
     if (count % 10 == 0) {
-      seek_keys.push_back(miter->key().ToString());
+      seek_keys.push_back(std::string(miter->key()));
     }
   }
 

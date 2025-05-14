@@ -43,7 +43,7 @@ Status Table::Open(const Options& options, RandomAccessFile* file,
   }
 
   char footer_space[Footer::kEncodedLength];
-  Slice footer_input;
+  std::string_view footer_input;
   Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
                         &footer_input, footer_space);
   if (!s.ok()) return s;
@@ -101,15 +101,15 @@ void Table::ReadMeta(const Footer& footer) {
   std::string key = "filter.";
   key.append(rep_->options.filter_policy->Name());
   iter->Seek(key);
-  if (iter->Valid() && iter->key() == Slice(key)) {
+  if (iter->Valid() && iter->key() == std::string_view(key)) {
     ReadFilter(iter->value());
   }
   delete iter;
   delete meta;
 }
 
-void Table::ReadFilter(const Slice& filter_handle_value) {
-  Slice v = filter_handle_value;
+void Table::ReadFilter(const std::string_view& filter_handle_value) {
+  std::string_view v = filter_handle_value;
   BlockHandle filter_handle;
   if (!filter_handle.DecodeFrom(&v).ok()) {
     return;
@@ -137,7 +137,7 @@ static void DeleteBlock(void* arg, void* ignored) {
   delete reinterpret_cast<Block*>(arg);
 }
 
-static void DeleteCachedBlock(const Slice& key, void* value) {
+static void DeleteCachedBlock(const std::string_view& key, void* value) {
   Block* block = reinterpret_cast<Block*>(value);
   delete block;
 }
@@ -151,14 +151,14 @@ static void ReleaseBlock(void* arg, void* h) {
 // Convert an index iterator value (i.e., an encoded BlockHandle)
 // into an iterator over the contents of the corresponding block.
 Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
-                             const Slice& index_value) {
+                             const std::string_view& index_value) {
   Table* table = reinterpret_cast<Table*>(arg);
   Cache* block_cache = table->rep_->options.block_cache;
   Block* block = nullptr;
   Cache::Handle* cache_handle = nullptr;
 
   BlockHandle handle;
-  Slice input = index_value;
+  std::string_view input = index_value;
   Status s = handle.DecodeFrom(&input);
   // We intentionally allow extra stuff in index_value so that we
   // can add more features in the future.
@@ -169,7 +169,7 @@ Iterator* Table::BlockReader(void* arg, const ReadOptions& options,
       char cache_key_buffer[16];
       EncodeFixed64(cache_key_buffer, table->rep_->cache_id);
       EncodeFixed64(cache_key_buffer + 8, handle.offset());
-      Slice key(cache_key_buffer, sizeof(cache_key_buffer));
+      std::string_view key(cache_key_buffer, sizeof(cache_key_buffer));
       cache_handle = block_cache->Lookup(key);
       if (cache_handle != nullptr) {
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
@@ -211,14 +211,14 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
       &Table::BlockReader, const_cast<Table*>(this), options);
 }
 
-Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
-                          void (*handle_result)(void*, const Slice&,
-                                                const Slice&)) {
+Status Table::InternalGet(const ReadOptions& options, const std::string_view& k, void* arg,
+                          void (*handle_result)(void*, const std::string_view&,
+                                                const std::string_view&)) {
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
   iiter->Seek(k);
   if (iiter->Valid()) {
-    Slice handle_value = iiter->value();
+    std::string_view handle_value = iiter->value();
     FilterBlockReader* filter = rep_->filter;
     BlockHandle handle;
     if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
@@ -241,14 +241,14 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
   return s;
 }
 
-uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
+uint64_t Table::ApproximateOffsetOf(const std::string_view& key) const {
   Iterator* index_iter =
       rep_->index_block->NewIterator(rep_->options.comparator);
   index_iter->Seek(key);
   uint64_t result;
   if (index_iter->Valid()) {
     BlockHandle handle;
-    Slice input = index_iter->value();
+    std::string_view input = index_iter->value();
     Status s = handle.DecodeFrom(&input);
     if (s.ok()) {
       result = handle.offset();

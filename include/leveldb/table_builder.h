@@ -49,7 +49,7 @@ class LEVELDB_EXPORT TableBuilder {
   // Add key,value to the table being constructed.
   // REQUIRES: key is after any previously added key according to comparator.
   // REQUIRES: Finish(), Abandon() have not been called
-  void Add(const Slice& key, const Slice& value);
+  void Add(const std::string_view& key, const std::string_view& value);
 
   // Advanced operation: flush any buffered key/value pairs to file.
   // Can be used to ensure that two adjacent entries never live in
@@ -82,7 +82,7 @@ class LEVELDB_EXPORT TableBuilder {
  private:
   bool ok() const { return status().ok(); }
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
-  void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
+  void WriteRawBlock(const std::string_view& data, CompressionType, BlockHandle* handle);
 
   struct Rep;
   Rep* rep_;

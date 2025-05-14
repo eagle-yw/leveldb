@@ -12,9 +12,9 @@ namespace leveldb {
 
 static const int kVerbose = 1;
 
-static Slice Key(int i, char* buffer) {
+static std::string_view Key(int i, char* buffer) {
   EncodeFixed32(buffer, i);
-  return Slice(buffer, sizeof(uint32_t));
+  return std::string_view(buffer, sizeof(uint32_t));
 }
 
 class BloomTest : public testing::Test {
@@ -28,12 +28,12 @@ class BloomTest : public testing::Test {
     filter_.clear();
   }
 
-  void Add(const Slice& s) { keys_.push_back(s.ToString()); }
+  void Add(const std::string_view& s) { keys_.push_back(std::string(s)); }
 
   void Build() {
-    std::vector<Slice> key_slices;
+    std::vector<std::string_view> key_slices;
     for (size_t i = 0; i < keys_.size(); i++) {
-      key_slices.push_back(Slice(keys_[i]));
+      key_slices.push_back(std::string_view(keys_[i]));
     }
     filter_.clear();
     policy_->CreateFilter(&key_slices[0], static_cast<int>(key_slices.size()),
@@ -55,7 +55,7 @@ class BloomTest : public testing::Test {
     std::fprintf(stderr, ")\n");
   }
 
-  bool Matches(const Slice& s) {
+  bool Matches(const std::string_view& s) {
     if (!keys_.empty()) {
       Build();
     }

@@ -31,7 +31,7 @@ Writer::Writer(WritableFile* dest, uint64_t dest_length)
 
 Writer::~Writer() = default;
 
-Status Writer::AddRecord(const Slice& slice) {
+Status Writer::AddRecord(const std::string_view& slice) {
   const char* ptr = slice.data();
   size_t left = slice.size();
 
@@ -48,7 +48,7 @@ Status Writer::AddRecord(const Slice& slice) {
       if (leftover > 0) {
         // Fill the trailer (literal below relies on kHeaderSize being 7)
         static_assert(kHeaderSize == 7, "");
-        dest_->Append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+        dest_->Append(std::string_view("\x00\x00\x00\x00\x00\x00", leftover));
       }
       block_offset_ = 0;
     }
@@ -96,9 +96,9 @@ Status Writer::EmitPhysicalRecord(RecordType t, const char* ptr,
   EncodeFixed32(buf, crc);
 
   // Write the header and the payload
-  Status s = dest_->Append(Slice(buf, kHeaderSize));
+  Status s = dest_->Append(std::string_view(buf, kHeaderSize));
   if (s.ok()) {
-    s = dest_->Append(Slice(ptr, length));
+    s = dest_->Append(std::string_view(ptr, length));
     if (s.ok()) {
       s = dest_->Flush();
     }

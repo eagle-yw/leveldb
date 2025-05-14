@@ -61,11 +61,11 @@ class DBIter : public Iterator {
 
   ~DBIter() override { delete iter_; }
   bool Valid() const override { return valid_; }
-  Slice key() const override {
+  std::string_view key() const override {
     assert(valid_);
     return (direction_ == kForward) ? ExtractUserKey(iter_->key()) : saved_key_;
   }
-  Slice value() const override {
+  std::string_view value() const override {
     assert(valid_);
     return (direction_ == kForward) ? iter_->value() : saved_value_;
   }
@@ -79,7 +79,7 @@ class DBIter : public Iterator {
 
   void Next() override;
   void Prev() override;
-  void Seek(const Slice& target) override;
+  void Seek(const std::string_view& target) override;
   void SeekToFirst() override;
   void SeekToLast() override;
 
@@ -88,7 +88,7 @@ class DBIter : public Iterator {
   void FindPrevUserEntry();
   bool ParseKey(ParsedInternalKey* key);
 
-  inline void SaveKey(const Slice& k, std::string* dst) {
+  inline void SaveKey(const std::string_view& k, std::string* dst) {
     dst->assign(k.data(), k.size());
   }
 
@@ -120,7 +120,7 @@ class DBIter : public Iterator {
 };
 
 inline bool DBIter::ParseKey(ParsedInternalKey* ikey) {
-  Slice k = iter_->key();
+  std::string_view k = iter_->key();
 
   size_t bytes_read = k.size() + iter_->value().size();
   while (bytes_until_read_sampling_ < bytes_read) {
@@ -251,7 +251,7 @@ void DBIter::FindPrevUserEntry() {
           saved_key_.clear();
           ClearSavedValue();
         } else {
-          Slice raw_value = iter_->value();
+          std::string_view raw_value = iter_->value();
           if (saved_value_.capacity() > raw_value.size() + 1048576) {
             std::string empty;
             swap(empty, saved_value_);
@@ -275,7 +275,7 @@ void DBIter::FindPrevUserEntry() {
   }
 }
 
-void DBIter::Seek(const Slice& target) {
+void DBIter::Seek(const std::string_view& target) {
   direction_ = kForward;
   ClearSavedValue();
   saved_key_.clear();

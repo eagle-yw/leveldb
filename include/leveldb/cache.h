@@ -19,9 +19,10 @@
 #define STORAGE_LEVELDB_INCLUDE_CACHE_H_
 
 #include <cstdint>
+#include <string_view>
 
 #include "leveldb/export.h"
-#include "leveldb/slice.h"
+
 
 namespace leveldb {
 
@@ -54,15 +55,15 @@ class LEVELDB_EXPORT Cache {
   //
   // When the inserted entry is no longer needed, the key and
   // value will be passed to "deleter".
-  virtual Handle* Insert(const Slice& key, void* value, size_t charge,
-                         void (*deleter)(const Slice& key, void* value)) = 0;
+  virtual Handle* Insert(const std::string_view& key, void* value, size_t charge,
+                         void (*deleter)(const std::string_view& key, void* value)) = 0;
 
   // If the cache has no mapping for "key", returns nullptr.
   //
   // Else return a handle that corresponds to the mapping.  The caller
   // must call this->Release(handle) when the returned mapping is no
   // longer needed.
-  virtual Handle* Lookup(const Slice& key) = 0;
+  virtual Handle* Lookup(const std::string_view& key) = 0;
 
   // Release a mapping returned by a previous Lookup().
   // REQUIRES: handle must not have been released yet.
@@ -78,7 +79,7 @@ class LEVELDB_EXPORT Cache {
   // If the cache contains entry for key, erase it.  Note that the
   // underlying entry will be kept around until all existing handles
   // to it have been released.
-  virtual void Erase(const Slice& key) = 0;
+  virtual void Erase(const std::string_view& key) = 0;
 
   // Return a new numeric id.  May be used by multiple clients who are
   // sharing the same cache to partition the key space.  Typically the

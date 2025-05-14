@@ -45,7 +45,7 @@ class FileLock;
 class Logger;
 class RandomAccessFile;
 class SequentialFile;
-class Slice;
+
 class WritableFile;
 
 class LEVELDB_EXPORT Env {
@@ -236,7 +236,7 @@ class LEVELDB_EXPORT SequentialFile {
   // If an error was encountered, returns a non-OK status.
   //
   // REQUIRES: External synchronization
-  virtual Status Read(size_t n, Slice* result, char* scratch) = 0;
+  virtual Status Read(size_t n, std::string_view* result, char* scratch) = 0;
 
   // Skip "n" bytes from the file. This is guaranteed to be no
   // slower that reading the same data, but may be faster.
@@ -267,7 +267,7 @@ class LEVELDB_EXPORT RandomAccessFile {
   // status.
   //
   // Safe for concurrent use by multiple threads.
-  virtual Status Read(uint64_t offset, size_t n, Slice* result,
+  virtual Status Read(uint64_t offset, size_t n, std::string_view* result,
                       char* scratch) const = 0;
 };
 
@@ -283,7 +283,7 @@ class LEVELDB_EXPORT WritableFile {
 
   virtual ~WritableFile();
 
-  virtual Status Append(const Slice& data) = 0;
+  virtual Status Append(const std::string_view& data) = 0;
   virtual Status Close() = 0;
   virtual Status Flush() = 0;
   virtual Status Sync() = 0;
@@ -322,7 +322,7 @@ void Log(Logger* info_log, const char* format, ...)
     ;
 
 // A utility routine: write "data" to the named file.
-LEVELDB_EXPORT Status WriteStringToFile(Env* env, const Slice& data,
+LEVELDB_EXPORT Status WriteStringToFile(Env* env, const std::string_view& data,
                                         const std::string& fname);
 
 // A utility routine: read contents of named file into *data

@@ -17,7 +17,7 @@ static std::string EncodeKey(int k) {
   PutFixed32(&result, k);
   return result;
 }
-static int DecodeKey(const Slice& k) {
+static int DecodeKey(const std::string_view& k) {
   assert(k.size() == 4);
   return DecodeFixed32(k.data());
 }
@@ -26,7 +26,7 @@ static int DecodeValue(void* v) { return reinterpret_cast<uintptr_t>(v); }
 
 class CacheTest : public testing::Test {
  public:
-  static void Deleter(const Slice& key, void* v) {
+  static void Deleter(const std::string_view& key, void* v) {
     current_->deleted_keys_.push_back(DecodeKey(key));
     current_->deleted_values_.push_back(DecodeValue(v));
   }

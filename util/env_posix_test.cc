@@ -201,7 +201,7 @@ TEST_F(EnvPosixTest, TestOpenOnRead) {
     ASSERT_LEVELDB_OK(env_->NewRandomAccessFile(test_file, &files[i]));
   }
   char scratch;
-  Slice read_result;
+  std::string_view read_result;
   for (int i = 0; i < kNumFiles; i++) {
     ASSERT_LEVELDB_OK(files[i]->Read(i, 1, &read_result, &scratch));
     ASSERT_EQ(kFileData[i], read_result[0]);

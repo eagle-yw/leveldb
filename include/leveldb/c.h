@@ -17,7 +17,7 @@
   This allows us to change internal representations without having to
   recompile clients.
 
-  (2) For simplicity, there is no equivalent to the Slice type.  Instead,
+  (2) For simplicity, there is no equivalent to the std::string_view type.  Instead,
   the caller has to pass the pointer and length as separate
   arguments.
 

@@ -8,7 +8,6 @@
 #include <cstdint>
 
 #include "db/log_format.h"
-#include "leveldb/slice.h"
 #include "leveldb/status.h"
 
 namespace leveldb {
@@ -53,7 +52,7 @@ class Reader {
   // "*scratch" as temporary storage.  The contents filled in *record
   // will only be valid until the next mutating operation on this
   // reader or the next mutation to *scratch.
-  bool ReadRecord(Slice* record, std::string* scratch);
+  bool ReadRecord(std::string_view* record, std::string* scratch);
 
   // Returns the physical offset of the last record returned by ReadRecord.
   //
@@ -78,7 +77,7 @@ class Reader {
   bool SkipToInitialBlock();
 
   // Return type, or one of the preceding special values
-  unsigned int ReadPhysicalRecord(Slice* result);
+  unsigned int ReadPhysicalRecord(std::string_view* result);
 
   // Reports dropped bytes to the reporter.
   // buffer_ must be updated to remove the dropped bytes prior to invocation.
@@ -89,7 +88,7 @@ class Reader {
   Reporter* const reporter_;
   bool const checksum_;
   char* const backing_store_;
-  Slice buffer_;
+  std::string_view buffer_;
   bool eof_;  // Last Read() indicated EOF by returning < kBlockSize
 
   // Offset of the last record returned by ReadRecord.

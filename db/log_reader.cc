@@ -53,7 +53,7 @@ bool Reader::SkipToInitialBlock() {
   return true;
 }
 
-bool Reader::ReadRecord(Slice* record, std::string* scratch) {
+bool Reader::ReadRecord(std::string_view* record, std::string* scratch) {
   if (last_record_offset_ < initial_offset_) {
     if (!SkipToInitialBlock()) {
       return false;
@@ -61,13 +61,13 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
   }
 
   scratch->clear();
-  record->clear();
+  *record = {};
   bool in_fragmented_record = false;
   // Record offset of the logical record that we're reading
   // 0 is a dummy value to make compilers happy
   uint64_t prospective_record_offset = 0;
 
-  Slice fragment;
+  std::string_view fragment;
   while (true) {
     const unsigned int record_type = ReadPhysicalRecord(&fragment);
 
@@ -135,7 +135,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
                            "missing start of fragmented record(2)");
         } else {
           scratch->append(fragment.data(), fragment.size());
-          *record = Slice(*scratch);
+          *record = std::string_view(*scratch);
           last_record_offset_ = prospective_record_offset;
           return true;
         }
@@ -186,16 +186,16 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
   }
 }
 
-unsigned int Reader::ReadPhysicalRecord(Slice* result) {
+unsigned int Reader::ReadPhysicalRecord(std::string_view* result) {
   while (true) {
     if (buffer_.size() < kHeaderSize) {
       if (!eof_) {
         // Last read was a full read, so this is a trailer to skip
-        buffer_.clear();
+        buffer_ = {};
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         end_of_buffer_offset_ += buffer_.size();
         if (!status.ok()) {
-          buffer_.clear();
+          buffer_ = {};
           ReportDrop(kBlockSize, status);
           eof_ = true;
           return kEof;
@@ -208,7 +208,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         // end of the file, which can be caused by the writer crashing in the
         // middle of writing the header. Instead of considering this an error,
         // just report EOF.
-        buffer_.clear();
+        buffer_ = {};
         return kEof;
       }
     }
@@ -221,7 +221,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
       size_t drop_size = buffer_.size();
-      buffer_.clear();
+      buffer_ = {};
       if (!eof_) {
         ReportCorruption(drop_size, "bad record length");
         return kBadRecord;
@@ -236,7 +236,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
       // Skip zero length record without reporting any drops since
       // such records are produced by the mmap based writing code in
       // env_posix.cc that preallocates file regions.
-      buffer_.clear();
+      buffer_ = {};
       return kBadRecord;
     }
 
@@ -250,7 +250,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
         // fragment of a real log record that just happens to look
         // like a valid log record.
         size_t drop_size = buffer_.size();
-        buffer_.clear();
+        buffer_ = {};
         ReportCorruption(drop_size, "checksum mismatch");
         return kBadRecord;
       }
@@ -261,11 +261,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     // Skip physical record that started before initial_offset_
     if (end_of_buffer_offset_ - buffer_.size() - kHeaderSize - length <
         initial_offset_) {
-      result->clear();
+      *result = {};
       return kBadRecord;
     }
 
-    *result = Slice(header + kHeaderSize, length);
+    *result = std::string_view(header + kHeaderSize, length);
     return type;
   }
 }

@@ -30,7 +30,7 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
 
     TableBuilder* builder = new TableBuilder(options, file);
     meta->smallest.DecodeFrom(iter->key());
-    Slice key;
+    std::string_view key;
     for (; iter->Valid(); iter->Next()) {
       key = iter->key();
       builder->Add(key, iter->value());

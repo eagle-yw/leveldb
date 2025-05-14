@@ -56,25 +56,25 @@ class LEVELDB_EXPORT Table {
   // bytes, and so includes effects like compression of the underlying data.
   // E.g., the approximate offset of the last key in the table will
   // be close to the file length.
-  uint64_t ApproximateOffsetOf(const Slice& key) const;
+  uint64_t ApproximateOffsetOf(const std::string_view& key) const;
 
  private:
   friend class TableCache;
   struct Rep;
 
-  static Iterator* BlockReader(void*, const ReadOptions&, const Slice&);
+  static Iterator* BlockReader(void*, const ReadOptions&, const std::string_view&);
 
   explicit Table(Rep* rep) : rep_(rep) {}
 
   // Calls (*handle_result)(arg, ...) with the entry found after a call
   // to Seek(key).  May not make such a call if filter policy says
   // that key is not present.
-  Status InternalGet(const ReadOptions&, const Slice& key, void* arg,
-                     void (*handle_result)(void* arg, const Slice& k,
-                                           const Slice& v));
+  Status InternalGet(const ReadOptions&, const std::string_view& key, void* arg,
+                     void (*handle_result)(void* arg, const std::string_view& k,
+                                           const std::string_view& v));
 
   void ReadMeta(const Footer& footer);
-  void ReadFilter(const Slice& filter_handle_value);
+  void ReadFilter(const std::string_view& filter_handle_value);
 
   Rep* const rep_;
 };

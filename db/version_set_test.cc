@@ -38,8 +38,8 @@ class FindFileTest : public testing::Test {
 
   bool Overlaps(const char* smallest, const char* largest) {
     InternalKeyComparator cmp(BytewiseComparator());
-    Slice s(smallest != nullptr ? smallest : "");
-    Slice l(largest != nullptr ? largest : "");
+    std::string_view s(smallest != nullptr ? smallest : "");
+    std::string_view l(largest != nullptr ? largest : "");
     return SomeFileOverlapsRange(cmp, disjoint_sorted_files_, files_,
                                  (smallest != nullptr ? &s : nullptr),
                                  (largest != nullptr ? &l : nullptr));

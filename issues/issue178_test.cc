@@ -62,8 +62,8 @@ TEST(Issue178, Test) {
   // compact database
   std::string start_key = Key1(0);
   std::string end_key = Key1(kNumKeys - 1);
-  leveldb::Slice least(start_key.data(), start_key.size());
-  leveldb::Slice greatest(end_key.data(), end_key.size());
+  leveldb::std::string_view least(start_key.data(), start_key.size());
+  leveldb::std::string_view greatest(end_key.data(), end_key.size());
 
   // commenting out the line below causes the example to work correctly
   db->CompactRange(&least, &greatest);

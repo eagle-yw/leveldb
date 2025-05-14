@@ -43,7 +43,7 @@ class WritableFile;
 // Return files.size() if there is no such file.
 // REQUIRES: "files" contains a sorted list of non-overlapping files.
 int FindFile(const InternalKeyComparator& icmp,
-             const std::vector<FileMetaData*>& files, const Slice& key);
+             const std::vector<FileMetaData*>& files, const std::string_view& key);
 
 // Returns true iff some file in "files" overlaps the user key range
 // [*smallest,*largest].
@@ -54,8 +54,8 @@ int FindFile(const InternalKeyComparator& icmp,
 bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
                            bool disjoint_sorted_files,
                            const std::vector<FileMetaData*>& files,
-                           const Slice* smallest_user_key,
-                           const Slice* largest_user_key);
+                           const std::string_view* smallest_user_key,
+                           const std::string_view* largest_user_key);
 
 class Version {
  public:
@@ -84,7 +84,7 @@ class Version {
   // Samples are taken approximately once every config::kReadBytesPeriod
   // bytes.  Returns true if a new compaction may need to be triggered.
   // REQUIRES: lock is held
-  bool RecordReadSample(Slice key);
+  bool RecordReadSample(std::string_view key);
 
   // Reference count management (so Versions do not disappear out from
   // under live iterators)
@@ -101,13 +101,13 @@ class Version {
   // some part of [*smallest_user_key,*largest_user_key].
   // smallest_user_key==nullptr represents a key smaller than all the DB's keys.
   // largest_user_key==nullptr represents a key largest than all the DB's keys.
-  bool OverlapInLevel(int level, const Slice* smallest_user_key,
-                      const Slice* largest_user_key);
+  bool OverlapInLevel(int level, const std::string_view* smallest_user_key,
+                      const std::string_view* largest_user_key);
 
   // Return the level at which we should place a new memtable compaction
   // result that covers the range [smallest_user_key,largest_user_key].
-  int PickLevelForMemTableOutput(const Slice& smallest_user_key,
-                                 const Slice& largest_user_key);
+  int PickLevelForMemTableOutput(const std::string_view& smallest_user_key,
+                                 const std::string_view& largest_user_key);
 
   int NumFiles(int level) const { return files_[level].size(); }
 
@@ -142,7 +142,7 @@ class Version {
   // false, makes no more calls.
   //
   // REQUIRES: user portion of internal_key == user_key.
-  void ForEachOverlapping(Slice user_key, Slice internal_key, void* arg,
+  void ForEachOverlapping(std::string_view user_key, std::string_view internal_key, void* arg,
                           bool (*func)(void*, int, FileMetaData*));
 
   VersionSet* vset_;  // VersionSet to which this Version belongs
@@ -347,11 +347,11 @@ class Compaction {
   // Returns true if the information we have available guarantees that
   // the compaction is producing data in "level+1" for which no data exists
   // in levels greater than "level+1".
-  bool IsBaseLevelForKey(const Slice& user_key);
+  bool IsBaseLevelForKey(const std::string_view& user_key);
 
   // Returns true iff we should stop building the current output
   // before processing "internal_key".
-  bool ShouldStopBefore(const Slice& internal_key);
+  bool ShouldStopBefore(const std::string_view& internal_key);
 
   // Release the input version for the compaction, once the compaction
   // is successful.

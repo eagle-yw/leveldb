@@ -172,22 +172,22 @@ TEST(Coding, Varint64Truncation) {
 
 TEST(Coding, Strings) {
   std::string s;
-  PutLengthPrefixedSlice(&s, Slice(""));
-  PutLengthPrefixedSlice(&s, Slice("foo"));
-  PutLengthPrefixedSlice(&s, Slice("bar"));
-  PutLengthPrefixedSlice(&s, Slice(std::string(200, 'x')));
+  PutLengthPrefixedSlice(&s, std::string_view(""));
+  PutLengthPrefixedSlice(&s, std::string_view("foo"));
+  PutLengthPrefixedSlice(&s, std::string_view("bar"));
+  PutLengthPrefixedSlice(&s, std::string_view(std::string(200, 'x')));
 
-  Slice input(s);
-  Slice v;
+  std::string_view input(s);
+  std::string_view v;
   ASSERT_TRUE(GetLengthPrefixedSlice(&input, &v));
-  ASSERT_EQ("", v.ToString());
+  ASSERT_EQ("", v);
   ASSERT_TRUE(GetLengthPrefixedSlice(&input, &v));
-  ASSERT_EQ("foo", v.ToString());
+  ASSERT_EQ("foo", v);
   ASSERT_TRUE(GetLengthPrefixedSlice(&input, &v));
-  ASSERT_EQ("bar", v.ToString());
+  ASSERT_EQ("bar", v);
   ASSERT_TRUE(GetLengthPrefixedSlice(&input, &v));
-  ASSERT_EQ(std::string(200, 'x'), v.ToString());
-  ASSERT_EQ("", input.ToString());
+  ASSERT_EQ(std::string(200, 'x'), v);
+  ASSERT_EQ("", input);
 }
 
 }  // namespace leveldb

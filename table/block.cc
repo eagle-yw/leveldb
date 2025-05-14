@@ -85,10 +85,10 @@ class Block::Iter : public Iterator {
   uint32_t current_;
   uint32_t restart_index_;  // Index of restart block in which current_ falls
   std::string key_;
-  Slice value_;
+  std::string_view value_;
   Status status_;
 
-  inline int Compare(const Slice& a, const Slice& b) const {
+  inline int Compare(const std::string_view& a, const std::string_view& b) const {
     return comparator_->Compare(a, b);
   }
 
@@ -103,13 +103,13 @@ class Block::Iter : public Iterator {
   }
 
   void SeekToRestartPoint(uint32_t index) {
-    key_.clear();
+    key_ = {};
     restart_index_ = index;
     // current_ will be fixed by ParseNextKey();
 
     // ParseNextKey() starts at the end of value_, so set value_ accordingly
     uint32_t offset = GetRestartPoint(index);
-    value_ = Slice(data_ + offset, 0);
+    value_ = std::string_view(data_ + offset, 0);
   }
 
  public:
@@ -126,11 +126,11 @@ class Block::Iter : public Iterator {
 
   bool Valid() const override { return current_ < restarts_; }
   Status status() const override { return status_; }
-  Slice key() const override {
+  std::string_view key() const override {
     assert(Valid());
     return key_;
   }
-  Slice value() const override {
+  std::string_view value() const override {
     assert(Valid());
     return value_;
   }
@@ -161,7 +161,7 @@ class Block::Iter : public Iterator {
     } while (ParseNextKey() && NextEntryOffset() < original);
   }
 
-  void Seek(const Slice& target) override {
+  void Seek(const std::string_view& target) override {
     // Binary search in restart array to find the last restart point
     // with a key < target
     uint32_t left = 0;
@@ -195,7 +195,7 @@ class Block::Iter : public Iterator {
         CorruptionError();
         return;
       }
-      Slice mid_key(key_ptr, non_shared);
+      std::string_view mid_key(key_ptr, non_shared);
       if (Compare(mid_key, target) < 0) {
         // Key at "mid" is smaller than "target".  Therefore all
         // blocks before "mid" are uninteresting.
@@ -244,7 +244,7 @@ class Block::Iter : public Iterator {
     restart_index_ = num_restarts_;
     status_ = Status::Corruption("bad entry in block");
     key_.clear();
-    value_.clear();
+    value_ = {};
   }
 
   bool ParseNextKey() {
@@ -267,7 +267,7 @@ class Block::Iter : public Iterator {
     } else {
       key_.resize(shared);
       key_.append(p, non_shared);
-      value_ = Slice(p + non_shared, value_length);
+      value_ = std::string_view(p + non_shared, value_length);
       while (restart_index_ + 1 < num_restarts_ &&
              GetRestartPoint(restart_index_ + 1) < current_) {
         ++restart_index_;

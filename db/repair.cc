@@ -175,7 +175,7 @@ class Repairer {
 
     // Read all the records and add to a memtable
     std::string scratch;
-    Slice record;
+    std::string_view record;
     WriteBatch batch;
     MemTable* mem = new MemTable(icmp_);
     mem->Ref();
@@ -260,7 +260,7 @@ class Repairer {
     ParsedInternalKey parsed;
     t.max_sequence = 0;
     for (iter->SeekToFirst(); iter->Valid(); iter->Next()) {
-      Slice key = iter->key();
+      std::string_view key = iter->key();
       if (!ParseInternalKey(key, &parsed)) {
         Log(options_.info_log, "Table #%llu: unparsable key %s",
             (unsigned long long)t.meta.number, EscapeString(key).c_str());

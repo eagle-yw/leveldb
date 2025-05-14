@@ -138,13 +138,13 @@ class CountComparator : public Comparator {
  public:
   CountComparator(const Comparator* wrapped) : wrapped_(wrapped) {}
   ~CountComparator() override {}
-  int Compare(const Slice& a, const Slice& b) const override {
+  int Compare(const std::string_view& a, const std::string_view& b) const override {
     count_.fetch_add(1, std::memory_order_relaxed);
     return wrapped_->Compare(a, b);
   }
   const char* Name() const override { return wrapped_->Name(); }
   void FindShortestSeparator(std::string* start,
-                             const Slice& limit) const override {
+                             const std::string_view& limit) const override {
     wrapped_->FindShortestSeparator(start, limit);
   }
 
@@ -183,13 +183,13 @@ class RandomGenerator {
     pos_ = 0;
   }
 
-  Slice Generate(size_t len) {
+  std::string_view Generate(size_t len) {
     if (pos_ + len > data_.size()) {
       pos_ = 0;
       assert(len < data_.size());
     }
     pos_ += len;
-    return Slice(data_.data() + pos_ - len, len);
+    return std::string_view(data_.data() + pos_ - len, len);
   }
 };
 
@@ -207,14 +207,14 @@ class KeyBuffer {
                   sizeof(buffer_) - FLAGS_key_prefix, "%016d", k);
   }
 
-  Slice slice() const { return Slice(buffer_, FLAGS_key_prefix + 16); }
+  std::string_view slice() const { return std::string_view(buffer_, FLAGS_key_prefix + 16); }
 
  private:
   char buffer_[1024];
 };
 
 #if defined(__linux)
-static Slice TrimSpace(Slice s) {
+static std::string_view TrimSpace(std::string_view s) {
   size_t start = 0;
   while (start < s.size() && isspace(s[start])) {
     start++;
@@ -223,11 +223,11 @@ static Slice TrimSpace(Slice s) {
   while (limit > start && isspace(s[limit - 1])) {
     limit--;
   }
-  return Slice(s.data() + start, limit - start);
+  return std::string_view(s.data() + start, limit - start);
 }
 #endif
 
-static void AppendWithSpace(std::string* str, Slice msg) {
+static void AppendWithSpace(std::string* str, std::string_view msg) {
   if (msg.empty()) return;
   if (!str->empty()) {
     str->push_back(' ');
@@ -277,7 +277,7 @@ class Stats {
     seconds_ = (finish_ - start_) * 1e-6;
   }
 
-  void AddMessage(Slice msg) { AppendWithSpace(&message_, msg); }
+  void AddMessage(std::string_view msg) { AppendWithSpace(&message_, msg); }
 
   void FinishedSingleOp() {
     if (FLAGS_histogram) {
@@ -314,7 +314,7 @@ class Stats {
 
   void AddBytes(int64_t n) { bytes_ += n; }
 
-  void Report(const Slice& name) {
+  void Report(const std::string_view& name) {
     // Pretend at least one op was done in case we are running a benchmark
     // that does not call FinishedSingleOp().
     if (done_ < 1) done_ = 1;
@@ -332,7 +332,7 @@ class Stats {
     AppendWithSpace(&extra, message_);
 
     std::fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
-                 name.ToString().c_str(), seconds_ * 1e6 / done_,
+                 name.data(), seconds_ * 1e6 / done_,
                  (extra.empty() ? "" : " "), extra.c_str());
     if (FLAGS_histogram) {
       std::fprintf(stdout, "Microseconds per op:\n%s\n",
@@ -376,7 +376,7 @@ void Compress(
     ThreadState* thread, std::string name,
     std::function<bool(const char*, size_t, std::string*)> compress_func) {
   RandomGenerator gen;
-  Slice input = gen.Generate(Options().block_size);
+  std::string_view input = gen.Generate(Options().block_size);
   int64_t bytes = 0;
   int64_t produced = 0;
   bool ok = true;
@@ -404,7 +404,7 @@ void Uncompress(
     std::function<bool(const char*, size_t, std::string*)> compress_func,
     std::function<bool(const char*, size_t, char*)> uncompress_func) {
   RandomGenerator gen;
-  Slice input = gen.Generate(Options().block_size);
+  std::string_view input = gen.Generate(Options().block_size);
   std::string compressed;
   bool ok = compress_func(input.data(), input.size(), &compressed);
   int64_t bytes = 0;
@@ -501,13 +501,13 @@ class Benchmark {
         if (sep == nullptr) {
           continue;
         }
-        Slice key = TrimSpace(Slice(line, sep - 1 - line));
-        Slice val = TrimSpace(Slice(sep + 1));
+        std::string_view key = TrimSpace(std::string_view(line, sep - 1 - line));
+        std::string_view val = TrimSpace(std::string_view(sep + 1));
         if (key == "model name") {
           ++num_cpus;
-          cpu_type = val.ToString();
+          cpu_type = val;
         } else if (key == "cache size") {
-          cache_size = val.ToString();
+          cache_size = val;
         }
       }
       std::fclose(cpuinfo);
@@ -534,7 +534,7 @@ class Benchmark {
     std::vector<std::string> files;
     g_env->GetChildren(FLAGS_db, &files);
     for (size_t i = 0; i < files.size(); i++) {
-      if (Slice(files[i]).starts_with("heap-")) {
+      if (std::string_view(files[i]).starts_with("heap-")) {
         g_env->RemoveFile(std::string(FLAGS_db) + "/" + files[i]);
       }
     }
@@ -556,12 +556,12 @@ class Benchmark {
     const char* benchmarks = FLAGS_benchmarks;
     while (benchmarks != nullptr) {
       const char* sep = strchr(benchmarks, ',');
-      Slice name;
+      std::string_view name;
       if (sep == nullptr) {
         name = benchmarks;
         benchmarks = nullptr;
       } else {
-        name = Slice(benchmarks, sep - benchmarks);
+        name = std::string_view(benchmarks, sep - benchmarks);
         benchmarks = sep + 1;
       }
 
@@ -576,86 +576,86 @@ class Benchmark {
       bool fresh_db = false;
       int num_threads = FLAGS_threads;
 
-      if (name == Slice("open")) {
+      if (name == std::string_view("open")) {
         method = &Benchmark::OpenBench;
         num_ /= 10000;
         if (num_ < 1) num_ = 1;
-      } else if (name == Slice("fillseq")) {
+      } else if (name == std::string_view("fillseq")) {
         fresh_db = true;
         method = &Benchmark::WriteSeq;
-      } else if (name == Slice("fillbatch")) {
+      } else if (name == std::string_view("fillbatch")) {
         fresh_db = true;
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteSeq;
-      } else if (name == Slice("fillrandom")) {
+      } else if (name == std::string_view("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
-      } else if (name == Slice("overwrite")) {
+      } else if (name == std::string_view("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
-      } else if (name == Slice("fillsync")) {
+      } else if (name == std::string_view("fillsync")) {
         fresh_db = true;
         num_ /= 1000;
         write_options_.sync = true;
         method = &Benchmark::WriteRandom;
-      } else if (name == Slice("fill100K")) {
+      } else if (name == std::string_view("fill100K")) {
         fresh_db = true;
         num_ /= 1000;
         value_size_ = 100 * 1000;
         method = &Benchmark::WriteRandom;
-      } else if (name == Slice("readseq")) {
+      } else if (name == std::string_view("readseq")) {
         method = &Benchmark::ReadSequential;
-      } else if (name == Slice("readreverse")) {
+      } else if (name == std::string_view("readreverse")) {
         method = &Benchmark::ReadReverse;
-      } else if (name == Slice("readrandom")) {
+      } else if (name == std::string_view("readrandom")) {
         method = &Benchmark::ReadRandom;
-      } else if (name == Slice("readmissing")) {
+      } else if (name == std::string_view("readmissing")) {
         method = &Benchmark::ReadMissing;
-      } else if (name == Slice("seekrandom")) {
+      } else if (name == std::string_view("seekrandom")) {
         method = &Benchmark::SeekRandom;
-      } else if (name == Slice("seekordered")) {
+      } else if (name == std::string_view("seekordered")) {
         method = &Benchmark::SeekOrdered;
-      } else if (name == Slice("readhot")) {
+      } else if (name == std::string_view("readhot")) {
         method = &Benchmark::ReadHot;
-      } else if (name == Slice("readrandomsmall")) {
+      } else if (name == std::string_view("readrandomsmall")) {
         reads_ /= 1000;
         method = &Benchmark::ReadRandom;
-      } else if (name == Slice("deleteseq")) {
+      } else if (name == std::string_view("deleteseq")) {
         method = &Benchmark::DeleteSeq;
-      } else if (name == Slice("deleterandom")) {
+      } else if (name == std::string_view("deleterandom")) {
         method = &Benchmark::DeleteRandom;
-      } else if (name == Slice("readwhilewriting")) {
+      } else if (name == std::string_view("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
-      } else if (name == Slice("compact")) {
+      } else if (name == std::string_view("compact")) {
         method = &Benchmark::Compact;
-      } else if (name == Slice("crc32c")) {
+      } else if (name == std::string_view("crc32c")) {
         method = &Benchmark::Crc32c;
-      } else if (name == Slice("snappycomp")) {
+      } else if (name == std::string_view("snappycomp")) {
         method = &Benchmark::SnappyCompress;
-      } else if (name == Slice("snappyuncomp")) {
+      } else if (name == std::string_view("snappyuncomp")) {
         method = &Benchmark::SnappyUncompress;
-      } else if (name == Slice("zstdcomp")) {
+      } else if (name == std::string_view("zstdcomp")) {
         method = &Benchmark::ZstdCompress;
-      } else if (name == Slice("zstduncomp")) {
+      } else if (name == std::string_view("zstduncomp")) {
         method = &Benchmark::ZstdUncompress;
-      } else if (name == Slice("heapprofile")) {
+      } else if (name == std::string_view("heapprofile")) {
         HeapProfile();
-      } else if (name == Slice("stats")) {
+      } else if (name == std::string_view("stats")) {
         PrintStats("leveldb.stats");
-      } else if (name == Slice("sstables")) {
+      } else if (name == std::string_view("sstables")) {
         PrintStats("leveldb.sstables");
       } else {
         if (!name.empty()) {  // No error message for empty name
           std::fprintf(stderr, "unknown benchmark '%s'\n",
-                       name.ToString().c_str());
+                       name.data());
         }
       }
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
           std::fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
-                       name.ToString().c_str());
+                       name.data());
           method = nullptr;
         } else {
           delete db_;
@@ -707,7 +707,7 @@ class Benchmark {
     }
   }
 
-  void RunBenchmark(int n, Slice name,
+  void RunBenchmark(int n, std::string_view name,
                     void (Benchmark::*method)(ThreadState*)) {
     SharedState shared(n);
 
@@ -916,7 +916,7 @@ class Benchmark {
     for (int i = 0; i < reads_; i++) {
       const int k = thread->rand.Uniform(FLAGS_num);
       key.Set(k);
-      Slice s = Slice(key.slice().data(), key.slice().size() - 1);
+      std::string_view s = std::string_view(key.slice().data(), key.slice().size() - 1);
       db_->Get(options, s, &value);
       thread->stats.FinishedSingleOp();
     }
@@ -1039,7 +1039,7 @@ class Benchmark {
   }
 
   static void WriteToFile(void* arg, const char* buf, int n) {
-    reinterpret_cast<WritableFile*>(arg)->Append(Slice(buf, n));
+    reinterpret_cast<WritableFile*>(arg)->Append(std::string_view(buf, n));
   }
 
   void HeapProfile() {
@@ -1074,7 +1074,7 @@ int main(int argc, char** argv) {
     double d;
     int n;
     char junk;
-    if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
+    if (std::string_view(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
     } else if (sscanf(argv[i], "--compression_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_compression_ratio = d;

@@ -13,7 +13,7 @@ namespace leveldb {
 
 namespace {
 
-typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const Slice&);
+typedef Iterator* (*BlockFunction)(void*, const ReadOptions&, const std::string_view&);
 
 class TwoLevelIterator : public Iterator {
  public:
@@ -22,18 +22,18 @@ class TwoLevelIterator : public Iterator {
 
   ~TwoLevelIterator() override;
 
-  void Seek(const Slice& target) override;
+  void Seek(const std::string_view& target) override;
   void SeekToFirst() override;
   void SeekToLast() override;
   void Next() override;
   void Prev() override;
 
   bool Valid() const override { return data_iter_.Valid(); }
-  Slice key() const override {
+  std::string_view key() const override {
     assert(Valid());
     return data_iter_.key();
   }
-  Slice value() const override {
+  std::string_view value() const override {
     assert(Valid());
     return data_iter_.value();
   }
@@ -79,7 +79,7 @@ TwoLevelIterator::TwoLevelIterator(Iterator* index_iter,
 
 TwoLevelIterator::~TwoLevelIterator() = default;
 
-void TwoLevelIterator::Seek(const Slice& target) {
+void TwoLevelIterator::Seek(const std::string_view& target) {
   index_iter_.Seek(target);
   InitDataBlock();
   if (data_iter_.iter() != nullptr) data_iter_.Seek(target);
@@ -147,7 +147,7 @@ void TwoLevelIterator::InitDataBlock() {
   if (!index_iter_.Valid()) {
     SetDataIterator(nullptr);
   } else {
-    Slice handle = index_iter_.value();
+    std::string_view handle = index_iter_.value();
     if (data_iter_.iter() != nullptr &&
         handle.compare(data_block_handle_) == 0) {
       // data_iter_ is already constructed with this iterator, so

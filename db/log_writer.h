@@ -8,7 +8,6 @@
 #include <cstdint>
 
 #include "db/log_format.h"
-#include "leveldb/slice.h"
 #include "leveldb/status.h"
 
 namespace leveldb {
@@ -34,7 +33,7 @@ class Writer {
 
   ~Writer();
 
-  Status AddRecord(const Slice& slice);
+  Status AddRecord(const std::string_view& slice);
 
  private:
   Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);

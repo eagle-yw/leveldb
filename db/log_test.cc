@@ -56,7 +56,7 @@ class LogTest : public testing::Test {
 
   void Write(const std::string& msg) {
     ASSERT_TRUE(!reading_) << "Write() after starting to read";
-    writer_->AddRecord(Slice(msg));
+    writer_->AddRecord(std::string_view(msg));
   }
 
   size_t WrittenBytes() const { return dest_.contents_.size(); }
@@ -64,12 +64,12 @@ class LogTest : public testing::Test {
   std::string Read() {
     if (!reading_) {
       reading_ = true;
-      source_.contents_ = Slice(dest_.contents_);
+      source_.contents_ = std::string_view(dest_.contents_);
     }
     std::string scratch;
-    Slice record;
+    std::string_view record;
     if (reader_->ReadRecord(&record, &scratch)) {
-      return record.ToString();
+      return std::string(record);
     } else {
       return "EOF";
     }
@@ -125,10 +125,10 @@ class LogTest : public testing::Test {
   void CheckOffsetPastEndReturnsNoRecords(uint64_t offset_past_end) {
     WriteInitialOffsetLog();
     reading_ = true;
-    source_.contents_ = Slice(dest_.contents_);
+    source_.contents_ = std::string_view(dest_.contents_);
     Reader* offset_reader = new Reader(&source_, &report_, true /*checksum*/,
                                        WrittenBytes() + offset_past_end);
-    Slice record;
+    std::string_view record;
     std::string scratch;
     ASSERT_TRUE(!offset_reader->ReadRecord(&record, &scratch));
     delete offset_reader;
@@ -138,7 +138,7 @@ class LogTest : public testing::Test {
                                 int expected_record_offset) {
     WriteInitialOffsetLog();
     reading_ = true;
-    source_.contents_ = Slice(dest_.contents_);
+    source_.contents_ = std::string_view(dest_.contents_);
     Reader* offset_reader =
         new Reader(&source_, &report_, true /*checksum*/, initial_offset);
 
@@ -146,7 +146,7 @@ class LogTest : public testing::Test {
     ASSERT_LT(expected_record_offset, num_initial_offset_records_);
     for (; expected_record_offset < num_initial_offset_records_;
          ++expected_record_offset) {
-      Slice record;
+      std::string_view record;
       std::string scratch;
       ASSERT_TRUE(offset_reader->ReadRecord(&record, &scratch));
       ASSERT_EQ(initial_offset_record_sizes_[expected_record_offset],
@@ -164,7 +164,7 @@ class LogTest : public testing::Test {
     Status Close() override { return Status::OK(); }
     Status Flush() override { return Status::OK(); }
     Status Sync() override { return Status::OK(); }
-    Status Append(const Slice& slice) override {
+    Status Append(const std::string_view& slice) override {
       contents_.append(slice.data(), slice.size());
       return Status::OK();
     }
@@ -176,7 +176,7 @@ class LogTest : public testing::Test {
    public:
     StringSource() : force_error_(false), returned_partial_(false) {}
 
-    Status Read(size_t n, Slice* result, char* scratch) override {
+    Status Read(size_t n, std::string_view* result, char* scratch) override {
       EXPECT_TRUE(!returned_partial_) << "must not Read() after eof/error";
 
       if (force_error_) {
@@ -189,14 +189,14 @@ class LogTest : public testing::Test {
         n = contents_.size();
         returned_partial_ = true;
       }
-      *result = Slice(contents_.data(), n);
+      *result = std::string_view(contents_.data(), n);
       contents_.remove_prefix(n);
       return Status::OK();
     }
 
     Status Skip(uint64_t n) override {
       if (n > contents_.size()) {
-        contents_.clear();
+        contents_ = {};
         return Status::NotFound("in-memory file skipped past end");
       }
 
@@ -205,7 +205,7 @@ class LogTest : public testing::Test {
       return Status::OK();
     }
 
-    Slice contents_;
+    std::string_view contents_;
     bool force_error_;
     bool returned_partial_;
   };

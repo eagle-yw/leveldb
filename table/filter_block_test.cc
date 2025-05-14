@@ -18,14 +18,14 @@ class TestHashFilter : public FilterPolicy {
  public:
   const char* Name() const override { return "TestHashFilter"; }
 
-  void CreateFilter(const Slice* keys, int n, std::string* dst) const override {
+  void CreateFilter(const std::string_view* keys, int n, std::string* dst) const override {
     for (int i = 0; i < n; i++) {
       uint32_t h = Hash(keys[i].data(), keys[i].size(), 1);
       PutFixed32(dst, h);
     }
   }
 
-  bool KeyMayMatch(const Slice& key, const Slice& filter) const override {
+  bool KeyMayMatch(const std::string_view& key, const std::string_view& filter) const override {
     uint32_t h = Hash(key.data(), key.size(), 1);
     for (size_t i = 0; i + 4 <= filter.size(); i += 4) {
       if (h == DecodeFixed32(filter.data() + i)) {
@@ -43,7 +43,7 @@ class FilterBlockTest : public testing::Test {
 
 TEST_F(FilterBlockTest, EmptyBuilder) {
   FilterBlockBuilder builder(&policy_);
-  Slice block = builder.Finish();
+  std::string_view block = builder.Finish();
   ASSERT_EQ("\\x00\\x00\\x00\\x00\\x0b", EscapeString(block));
   FilterBlockReader reader(&policy_, block);
   ASSERT_TRUE(reader.KeyMayMatch(0, "foo"));
@@ -60,7 +60,7 @@ TEST_F(FilterBlockTest, SingleChunk) {
   builder.AddKey("box");
   builder.StartBlock(300);
   builder.AddKey("hello");
-  Slice block = builder.Finish();
+  std::string_view block = builder.Finish();
   FilterBlockReader reader(&policy_, block);
   ASSERT_TRUE(reader.KeyMayMatch(100, "foo"));
   ASSERT_TRUE(reader.KeyMayMatch(100, "bar"));
@@ -91,7 +91,7 @@ TEST_F(FilterBlockTest, MultiChunk) {
   builder.AddKey("box");
   builder.AddKey("hello");
 
-  Slice block = builder.Finish();
+  std::string_view block = builder.Finish();
   FilterBlockReader reader(&policy_, block);
 
   // Check first filter

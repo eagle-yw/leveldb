@@ -23,7 +23,7 @@ struct ReadOptions;
 Iterator* NewTwoLevelIterator(
     Iterator* index_iter,
     Iterator* (*block_function)(void* arg, const ReadOptions& options,
-                                const Slice& index_value),
+                                const std::string_view& index_value),
     void* arg, const ReadOptions& options);
 
 }  // namespace leveldb

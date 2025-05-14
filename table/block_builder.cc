@@ -58,18 +58,18 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
           sizeof(uint32_t));                     // Restart array length
 }
 
-Slice BlockBuilder::Finish() {
+std::string_view BlockBuilder::Finish() {
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
   PutFixed32(&buffer_, restarts_.size());
   finished_ = true;
-  return Slice(buffer_);
+  return std::string_view(buffer_);
 }
 
-void BlockBuilder::Add(const Slice& key, const Slice& value) {
-  Slice last_key_piece(last_key_);
+void BlockBuilder::Add(const std::string_view& key, const std::string_view& value) {
+  std::string_view last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
   assert(buffer_.empty()  // No values yet?
@@ -100,7 +100,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   // Update state
   last_key_.resize(shared);
   last_key_.append(key.data() + shared, non_shared);
-  assert(Slice(last_key_) == key);
+  assert(std::string_view(last_key_) == key);
   counter_++;
 }
 

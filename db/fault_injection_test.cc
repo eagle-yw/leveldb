@@ -59,7 +59,7 @@ Status Truncate(const std::string& filename, uint64_t length) {
   if (!s.ok()) return s;
 
   char* scratch = new char[length];
-  leveldb::Slice result;
+  leveldb::std::string_view result;
   s = orig_file->Read(length, &result, scratch);
   delete orig_file;
   if (s.ok()) {
@@ -110,7 +110,7 @@ class TestWritableFile : public WritableFile {
   TestWritableFile(const FileState& state, WritableFile* f,
                    FaultInjectionTestEnv* env);
   ~TestWritableFile() override;
-  Status Append(const Slice& data) override;
+  Status Append(const std::string_view& data) override;
   Status Close() override;
   Status Flush() override;
   Status Sync() override;
@@ -176,7 +176,7 @@ TestWritableFile::~TestWritableFile() {
   delete target_;
 }
 
-Status TestWritableFile::Append(const Slice& data) {
+Status TestWritableFile::Append(const std::string_view& data) {
   Status s = target_->Append(data);
   if (s.ok() && env_->IsFilesystemActive()) {
     state_.pos_ += data.size();
@@ -398,7 +398,7 @@ class FaultInjectionTest : public testing::Test {
     std::string key_space, value_space;
     WriteBatch batch;
     for (int i = start_idx; i < start_idx + num_vals; i++) {
-      Slice key = Key(i, &key_space);
+      std::string_view key = Key(i, &key_space);
       batch.Clear();
       batch.Put(key, Value(i, &value_space));
       WriteOptions options;
@@ -408,7 +408,7 @@ class FaultInjectionTest : public testing::Test {
 
   Status ReadValue(int i, std::string* val) const {
     std::string key_space, value_space;
-    Slice key = Key(i, &key_space);
+    std::string_view key = Key(i, &key_space);
     Value(i, &value_space);
     ReadOptions options;
     return db_->Get(options, key, val);
@@ -437,15 +437,15 @@ class FaultInjectionTest : public testing::Test {
   }
 
   // Return the ith key
-  Slice Key(int i, std::string* storage) const {
+  std::string_view Key(int i, std::string* storage) const {
     char buf[100];
     std::snprintf(buf, sizeof(buf), "%016d", i);
     storage->assign(buf, strlen(buf));
-    return Slice(*storage);
+    return std::string_view(*storage);
   }
 
   // Return the value to associate with the specified key
-  Slice Value(int k, std::string* storage) const {
+  std::string_view Value(int k, std::string* storage) const {
     Random r(k);
     return test::RandomString(&r, kValueSize, storage);
   }

@@ -84,8 +84,8 @@ void VersionEdit::EncodeTo(std::string* dst) const {
   }
 }
 
-static bool GetInternalKey(Slice* input, InternalKey* dst) {
-  Slice str;
+static bool GetInternalKey(std::string_view* input, InternalKey* dst) {
+  std::string_view str;
   if (GetLengthPrefixedSlice(input, &str)) {
     return dst->DecodeFrom(str);
   } else {
@@ -93,7 +93,7 @@ static bool GetInternalKey(Slice* input, InternalKey* dst) {
   }
 }
 
-static bool GetLevel(Slice* input, int* level) {
+static bool GetLevel(std::string_view* input, int* level) {
   uint32_t v;
   if (GetVarint32(input, &v) && v < config::kNumLevels) {
     *level = v;
@@ -103,9 +103,9 @@ static bool GetLevel(Slice* input, int* level) {
   }
 }
 
-Status VersionEdit::DecodeFrom(const Slice& src) {
+Status VersionEdit::DecodeFrom(const std::string_view& src) {
   Clear();
-  Slice input = src;
+  std::string_view input = src;
   const char* msg = nullptr;
   uint32_t tag;
 
@@ -113,14 +113,14 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
   int level;
   uint64_t number;
   FileMetaData f;
-  Slice str;
+  std::string_view str;
   InternalKey key;
 
   while (msg == nullptr && GetVarint32(&input, &tag)) {
     switch (tag) {
       case kComparator:
         if (GetLengthPrefixedSlice(&input, &str)) {
-          comparator_ = str.ToString();
+          comparator_.assign(str);
           has_comparator_ = true;
         } else {
           msg = "comparator name";

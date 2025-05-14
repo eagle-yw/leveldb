@@ -199,27 +199,27 @@ Note that when a snapshot is no longer needed, it should be released using the
 `DB::ReleaseSnapshot` interface. This allows the implementation to get rid of
 state that was being maintained just to support reading as of that snapshot.
 
-## Slice
+## std::string_view
 
 The return value of the `it->key()` and `it->value()` calls above are instances
-of the `leveldb::Slice` type. Slice is a simple structure that contains a length
-and a pointer to an external byte array. Returning a Slice is a cheaper
+of the `leveldb::std::string_view` type. std::string_view is a simple structure that contains a length
+and a pointer to an external byte array. Returning a std::string_view is a cheaper
 alternative to returning a `std::string` since we do not need to copy
 potentially large keys and values. In addition, leveldb methods do not return
 null-terminated C-style strings since leveldb keys and values are allowed to
 contain `'\0'` bytes.
 
 C++ strings and null-terminated C-style strings can be easily converted to a
-Slice:
+std::string_view:
 
 ```c++
-leveldb::Slice s1 = "hello";
+leveldb::std::string_view s1 = "hello";
 
 std::string str("world");
-leveldb::Slice s2 = str;
+leveldb::std::string_view s2 = str;
 ```
 
-A Slice can be easily converted back to a C++ string:
+A std::string_view can be easily converted back to a C++ string:
 
 ```c++
 std::string str = s1.ToString();
@@ -227,11 +227,11 @@ assert(str == std::string("hello"));
 ```
 
 Be careful when using Slices since it is up to the caller to ensure that the
-external byte array into which the Slice points remains live while the Slice is
+external byte array into which the std::string_view points remains live while the std::string_view is
 in use. For example, the following is buggy:
 
 ```c++
-leveldb::Slice slice;
+leveldb::std::string_view slice;
 if (...) {
   std::string str = ...;
   slice = str;
@@ -257,7 +257,7 @@ class TwoPartComparator : public leveldb::Comparator {
   //   if a < b: negative result
   //   if a > b: positive result
   //   else: zero result
-  int Compare(const leveldb::Slice& a, const leveldb::Slice& b) const {
+  int Compare(const leveldb::std::string_view& a, const leveldb::std::string_view& b) const {
     int a1, a2, b1, b2;
     ParseKey(a, &a1, &a2);
     ParseKey(b, &b1, &b2);
@@ -270,7 +270,7 @@ class TwoPartComparator : public leveldb::Comparator {
 
   // Ignore the following methods for now:
   const char* Name() const { return "TwoPartComparator"; }
-  void FindShortestSeparator(std::string*, const leveldb::Slice&) const {}
+  void FindShortestSeparator(std::string*, const leveldb::std::string_view&) const {}
   void FindShortSuccessor(std::string*) const {}
 };
 ```
@@ -433,9 +433,9 @@ class CustomFilterPolicy : public leveldb::FilterPolicy {
 
   const char* Name() const { return "IgnoreTrailingSpacesFilter"; }
 
-  void CreateFilter(const leveldb::Slice* keys, int n, std::string* dst) const {
+  void CreateFilter(const leveldb::std::string_view* keys, int n, std::string* dst) const {
     // Use builtin bloom filter code after removing trailing spaces
-    std::vector<leveldb::Slice> trimmed(n);
+    std::vector<leveldb::std::string_view> trimmed(n);
     for (int i = 0; i < n; i++) {
       trimmed[i] = RemoveTrailingSpaces(keys[i]);
     }

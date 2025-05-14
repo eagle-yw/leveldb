@@ -11,11 +11,11 @@
 
 namespace leveldb {
 
-static Slice GetLengthPrefixedSlice(const char* data) {
+static std::string_view GetLengthPrefixedSlice(const char* data) {
   uint32_t len;
   const char* p = data;
   p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
-  return Slice(p, len);
+  return std::string_view(p, len);
 }
 
 MemTable::MemTable(const InternalKeyComparator& comparator)
@@ -28,15 +28,15 @@ size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }
 int MemTable::KeyComparator::operator()(const char* aptr,
                                         const char* bptr) const {
   // Internal keys are encoded as length-prefixed strings.
-  Slice a = GetLengthPrefixedSlice(aptr);
-  Slice b = GetLengthPrefixedSlice(bptr);
+  std::string_view a = GetLengthPrefixedSlice(aptr);
+  std::string_view b = GetLengthPrefixedSlice(bptr);
   return comparator.Compare(a, b);
 }
 
 // Encode a suitable internal key target for "target" and return it.
 // Uses *scratch as scratch space, and the returned pointer will point
 // into this scratch space.
-static const char* EncodeKey(std::string* scratch, const Slice& target) {
+static const char* EncodeKey(std::string* scratch, const std::string_view& target) {
   scratch->clear();
   PutVarint32(scratch, target.size());
   scratch->append(target.data(), target.size());
@@ -53,14 +53,14 @@ class MemTableIterator : public Iterator {
   ~MemTableIterator() override = default;
 
   bool Valid() const override { return iter_.Valid(); }
-  void Seek(const Slice& k) override { iter_.Seek(EncodeKey(&tmp_, k)); }
+  void Seek(const std::string_view& k) override { iter_.Seek(EncodeKey(&tmp_, k)); }
   void SeekToFirst() override { iter_.SeekToFirst(); }
   void SeekToLast() override { iter_.SeekToLast(); }
   void Next() override { iter_.Next(); }
   void Prev() override { iter_.Prev(); }
-  Slice key() const override { return GetLengthPrefixedSlice(iter_.key()); }
-  Slice value() const override {
-    Slice key_slice = GetLengthPrefixedSlice(iter_.key());
+  std::string_view key() const override { return GetLengthPrefixedSlice(iter_.key()); }
+  std::string_view value() const override {
+    std::string_view key_slice = GetLengthPrefixedSlice(iter_.key());
     return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
   }
 
@@ -73,8 +73,8 @@ class MemTableIterator : public Iterator {
 
 Iterator* MemTable::NewIterator() { return new MemTableIterator(&table_); }
 
-void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
-                   const Slice& value) {
+void MemTable::Add(SequenceNumber s, ValueType type, const std::string_view& key,
+                   const std::string_view& value) {
   // Format of an entry is concatenation of:
   //  key_size     : varint32 of internal_key.size()
   //  key bytes    : char[internal_key.size()]
@@ -100,7 +100,7 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
 }
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
-  Slice memkey = key.memtable_key();
+  std::string_view memkey = key.memtable_key();
   Table::Iterator iter(&table_);
   iter.Seek(memkey.data());
   if (iter.Valid()) {
@@ -117,17 +117,17 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
     uint32_t key_length;
     const char* key_ptr = GetVarint32Ptr(entry, entry + 5, &key_length);
     if (comparator_.comparator.user_comparator()->Compare(
-            Slice(key_ptr, key_length - 8), key.user_key()) == 0) {
+            std::string_view(key_ptr, key_length - 8), key.user_key()) == 0) {
       // Correct user key
       const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
       switch (static_cast<ValueType>(tag & 0xff)) {
         case kTypeValue: {
-          Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
+          std::string_view v = GetLengthPrefixedSlice(key_ptr + key_length);
           value->assign(v.data(), v.size());
           return true;
         }
         case kTypeDeletion:
-          *s = Status::NotFound(Slice());
+          *s = Status::NotFound(std::string_view());
           return true;
       }
     }

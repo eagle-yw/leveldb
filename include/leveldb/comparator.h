@@ -6,12 +6,11 @@
 #define STORAGE_LEVELDB_INCLUDE_COMPARATOR_H_
 
 #include <string>
+#include <string_view>
 
 #include "leveldb/export.h"
 
 namespace leveldb {
-
-class Slice;
 
 // A Comparator object provides a total order across slices that are
 // used as keys in an sstable or a database.  A Comparator implementation
@@ -25,7 +24,7 @@ class LEVELDB_EXPORT Comparator {
   //   < 0 iff "a" < "b",
   //   == 0 iff "a" == "b",
   //   > 0 iff "a" > "b"
-  virtual int Compare(const Slice& a, const Slice& b) const = 0;
+  virtual int Compare(const std::string_view& a, const std::string_view& b) const = 0;
 
   // The name of the comparator.  Used to check for comparator
   // mismatches (i.e., a DB created with one comparator is
@@ -46,7 +45,7 @@ class LEVELDB_EXPORT Comparator {
   // Simple comparator implementations may return with *start unchanged,
   // i.e., an implementation of this method that does nothing is correct.
   virtual void FindShortestSeparator(std::string* start,
-                                     const Slice& limit) const = 0;
+                                     const std::string_view& limit) const = 0;
 
   // Changes *key to a short string >= *key.
   // Simple comparator implementations may return with *key unchanged,

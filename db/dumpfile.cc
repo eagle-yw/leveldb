@@ -52,7 +52,7 @@ class CorruptionReporter : public log::Reader::Reporter {
 
 // Print contents of a log file. (*func)() is called on every record.
 Status PrintLogContents(Env* env, const std::string& fname,
-                        void (*func)(uint64_t, Slice, WritableFile*),
+                        void (*func)(uint64_t, std::string_view, WritableFile*),
                         WritableFile* dst) {
   SequentialFile* file;
   Status s = env->NewSequentialFile(fname, &file);
@@ -62,7 +62,7 @@ Status PrintLogContents(Env* env, const std::string& fname,
   CorruptionReporter reporter;
   reporter.dst_ = dst;
   log::Reader reader(file, &reporter, true, 0);
-  Slice record;
+  std::string_view record;
   std::string scratch;
   while (reader.ReadRecord(&record, &scratch)) {
     (*func)(reader.LastRecordOffset(), record, dst);
@@ -74,7 +74,7 @@ Status PrintLogContents(Env* env, const std::string& fname,
 // Called on every item found in a WriteBatch.
 class WriteBatchItemPrinter : public WriteBatch::Handler {
  public:
-  void Put(const Slice& key, const Slice& value) override {
+  void Put(const std::string_view& key, const std::string_view& value) override {
     std::string r = "  put '";
     AppendEscapedStringTo(&r, key);
     r += "' '";
@@ -82,7 +82,7 @@ class WriteBatchItemPrinter : public WriteBatch::Handler {
     r += "'\n";
     dst_->Append(r);
   }
-  void Delete(const Slice& key) override {
+  void Delete(const std::string_view& key) override {
     std::string r = "  del '";
     AppendEscapedStringTo(&r, key);
     r += "'\n";
@@ -94,7 +94,7 @@ class WriteBatchItemPrinter : public WriteBatch::Handler {
 
 // Called on every log record (each one of which is a WriteBatch)
 // found in a kLogFile.
-static void WriteBatchPrinter(uint64_t pos, Slice record, WritableFile* dst) {
+static void WriteBatchPrinter(uint64_t pos, std::string_view record, WritableFile* dst) {
   std::string r = "--- offset ";
   AppendNumberTo(&r, pos);
   r += "; ";
@@ -125,7 +125,7 @@ Status DumpLog(Env* env, const std::string& fname, WritableFile* dst) {
 
 // Called on every log record (each one of which is a WriteBatch)
 // found in a kDescriptorFile.
-static void VersionEditPrinter(uint64_t pos, Slice record, WritableFile* dst) {
+static void VersionEditPrinter(uint64_t pos, std::string_view record, WritableFile* dst) {
   std::string r = "--- offset ";
   AppendNumberTo(&r, pos);
   r += "; ";

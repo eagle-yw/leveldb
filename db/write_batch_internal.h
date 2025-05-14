@@ -29,11 +29,11 @@ class WriteBatchInternal {
   // this batch.
   static void SetSequence(WriteBatch* batch, SequenceNumber seq);
 
-  static Slice Contents(const WriteBatch* batch) { return Slice(batch->rep_); }
+  static std::string_view Contents(const WriteBatch* batch) { return std::string_view(batch->rep_); }
 
   static size_t ByteSize(const WriteBatch* batch) { return batch->rep_.size(); }
 
-  static void SetContents(WriteBatch* batch, const Slice& contents);
+  static void SetContents(WriteBatch* batch, const std::string_view& contents);
 
   static Status InsertInto(const WriteBatch* batch, MemTable* memtable);
 

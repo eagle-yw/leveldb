@@ -34,7 +34,7 @@ class AutoCompactTest : public testing::Test {
     return std::string(buf);
   }
 
-  uint64_t Size(const Slice& start, const Slice& limit) {
+  uint64_t Size(const std::string_view& start, const std::string_view& limit) {
     Range r(start, limit);
     uint64_t size;
     db_->GetApproximateSizes(&r, 1, &size);
@@ -82,7 +82,7 @@ void AutoCompactTest::DoReads(int n) {
     ASSERT_LT(read, 100) << "Taking too long to compact";
     Iterator* iter = db_->NewIterator(ReadOptions());
     for (iter->SeekToFirst();
-         iter->Valid() && iter->key().ToString() < limit_key; iter->Next()) {
+         iter->Valid() && iter->key() < limit_key; iter->Next()) {
       // Drop data
     }
     delete iter;

@@ -44,7 +44,7 @@ class MergingIterator : public Iterator {
     direction_ = kReverse;
   }
 
-  void Seek(const Slice& target) override {
+  void Seek(const std::string_view& target) override {
     for (int i = 0; i < n_; i++) {
       children_[i].Seek(target);
     }
@@ -107,12 +107,12 @@ class MergingIterator : public Iterator {
     FindLargest();
   }
 
-  Slice key() const override {
+  std::string_view key() const override {
     assert(Valid());
     return current_->key();
   }
 
-  Slice value() const override {
+  std::string_view value() const override {
     assert(Valid());
     return current_->value();
   }

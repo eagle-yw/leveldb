@@ -68,7 +68,7 @@ class FileState {
     size_ = 0;
   }
 
-  Status Read(uint64_t offset, size_t n, Slice* result, char* scratch) const {
+  Status Read(uint64_t offset, size_t n, std::string_view* result, char* scratch) const {
     MutexLock lock(&blocks_mutex_);
     if (offset > size_) {
       return Status::IOError("Offset greater than file size.");
@@ -78,7 +78,7 @@ class FileState {
       n = static_cast<size_t>(available);
     }
     if (n == 0) {
-      *result = Slice();
+      *result = std::string_view();
       return Status::OK();
     }
 
@@ -101,11 +101,11 @@ class FileState {
       block_offset = 0;
     }
 
-    *result = Slice(scratch, n);
+    *result = std::string_view(scratch, n);
     return Status::OK();
   }
 
-  Status Append(const Slice& data) {
+  Status Append(const std::string_view& data) {
     const char* src = data.data();
     size_t src_len = data.size();
 
@@ -157,7 +157,7 @@ class SequentialFileImpl : public SequentialFile {
 
   ~SequentialFileImpl() override { file_->Unref(); }
 
-  Status Read(size_t n, Slice* result, char* scratch) override {
+  Status Read(size_t n, std::string_view* result, char* scratch) override {
     Status s = file_->Read(pos_, n, result, scratch);
     if (s.ok()) {
       pos_ += result->size();
@@ -188,7 +188,7 @@ class RandomAccessFileImpl : public RandomAccessFile {
 
   ~RandomAccessFileImpl() override { file_->Unref(); }
 
-  Status Read(uint64_t offset, size_t n, Slice* result,
+  Status Read(uint64_t offset, size_t n, std::string_view* result,
               char* scratch) const override {
     return file_->Read(offset, n, result, scratch);
   }
@@ -203,7 +203,7 @@ class WritableFileImpl : public WritableFile {
 
   ~WritableFileImpl() override { file_->Unref(); }
 
-  Status Append(const Slice& data) override { return file_->Append(data); }
+  Status Append(const std::string_view& data) override { return file_->Append(data); }
 
   Status Close() override { return Status::OK(); }
   Status Flush() override { return Status::OK(); }
@@ -300,7 +300,7 @@ class InMemoryEnv : public EnvWrapper {
       const std::string& filename = kvp.first;
 
       if (filename.size() >= dir.size() + 1 && filename[dir.size()] == '/' &&
-          Slice(filename).starts_with(Slice(dir))) {
+          std::string_view(filename).starts_with(std::string_view(dir))) {
         result->push_back(filename.substr(dir.size() + 1));
       }
     }

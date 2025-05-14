@@ -36,23 +36,23 @@ class DBImpl : public DB {
   ~DBImpl() override;
 
   // Implementations of the DB interface
-  Status Put(const WriteOptions&, const Slice& key,
-             const Slice& value) override;
-  Status Delete(const WriteOptions&, const Slice& key) override;
+  Status Put(const WriteOptions&, const std::string_view& key,
+             const std::string_view& value) override;
+  Status Delete(const WriteOptions&, const std::string_view& key) override;
   Status Write(const WriteOptions& options, WriteBatch* updates) override;
-  Status Get(const ReadOptions& options, const Slice& key,
+  Status Get(const ReadOptions& options, const std::string_view& key,
              std::string* value) override;
   Iterator* NewIterator(const ReadOptions&) override;
   const Snapshot* GetSnapshot() override;
   void ReleaseSnapshot(const Snapshot* snapshot) override;
-  bool GetProperty(const Slice& property, std::string* value) override;
+  bool GetProperty(const std::string_view& property, std::string* value) override;
   void GetApproximateSizes(const Range* range, int n, uint64_t* sizes) override;
-  void CompactRange(const Slice* begin, const Slice* end) override;
+  void CompactRange(const std::string_view* begin, const std::string_view* end) override;
 
   // Extra methods (for testing) that are not in the public DB interface
 
   // Compact any files in the named level that overlap [*begin,*end]
-  void TEST_CompactRange(int level, const Slice* begin, const Slice* end);
+  void TEST_CompactRange(int level, const std::string_view* begin, const std::string_view* end);
 
   // Force current memtable contents to be compacted.
   Status TEST_CompactMemTable();
@@ -69,7 +69,7 @@ class DBImpl : public DB {
   // Record a sample of bytes read at the specified internal key.
   // Samples are taken approximately once every config::kReadBytesPeriod
   // bytes.
-  void RecordReadSample(Slice key);
+  void RecordReadSample(std::string_view key);
 
  private:
   friend class DB;

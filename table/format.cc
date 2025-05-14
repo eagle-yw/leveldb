@@ -21,7 +21,7 @@ void BlockHandle::EncodeTo(std::string* dst) const {
   PutVarint64(dst, size_);
 }
 
-Status BlockHandle::DecodeFrom(Slice* input) {
+Status BlockHandle::DecodeFrom(std::string_view* input) {
   if (GetVarint64(input, &offset_) && GetVarint64(input, &size_)) {
     return Status::OK();
   } else {
@@ -40,7 +40,7 @@ void Footer::EncodeTo(std::string* dst) const {
   (void)original_size;  // Disable unused variable warning.
 }
 
-Status Footer::DecodeFrom(Slice* input) {
+Status Footer::DecodeFrom(std::string_view* input) {
   if (input->size() < kEncodedLength) {
     return Status::Corruption("not an sstable (footer too short)");
   }
@@ -61,14 +61,14 @@ Status Footer::DecodeFrom(Slice* input) {
   if (result.ok()) {
     // We skip over any leftover data (just padding for now) in "input"
     const char* end = magic_ptr + 8;
-    *input = Slice(end, input->data() + input->size() - end);
+    *input = std::string_view(end, input->data() + input->size() - end);
   }
   return result;
 }
 
 Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
                  const BlockHandle& handle, BlockContents* result) {
-  result->data = Slice();
+  result->data = std::string_view();
   result->cachable = false;
   result->heap_allocated = false;
 
@@ -76,7 +76,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   // See table_builder.cc for the code that built this structure.
   size_t n = static_cast<size_t>(handle.size());
   char* buf = new char[n + kBlockTrailerSize];
-  Slice contents;
+  std::string_view contents;
   Status s = file->Read(handle.offset(), n + kBlockTrailerSize, &contents, buf);
   if (!s.ok()) {
     delete[] buf;
@@ -106,11 +106,11 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
         // Use it directly under the assumption that it will be live
         // while the file is open.
         delete[] buf;
-        result->data = Slice(data, n);
+        result->data = std::string_view(data, n);
         result->heap_allocated = false;
         result->cachable = false;  // Do not double-cache
       } else {
-        result->data = Slice(buf, n);
+        result->data = std::string_view(buf, n);
         result->heap_allocated = true;
         result->cachable = true;
       }
@@ -130,7 +130,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
         return Status::Corruption("corrupted snappy compressed block contents");
       }
       delete[] buf;
-      result->data = Slice(ubuf, ulength);
+      result->data = std::string_view(ubuf, ulength);
       result->heap_allocated = true;
       result->cachable = true;
       break;
@@ -148,7 +148,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
         return Status::Corruption("corrupted zstd compressed block contents");
       }
       delete[] buf;
-      result->data = Slice(ubuf, ulength);
+      result->data = std::string_view(ubuf, ulength);
       result->heap_allocated = true;
       result->cachable = true;
       break;

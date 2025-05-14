@@ -7,8 +7,9 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
+#include <string_view>
 
-#include "leveldb/slice.h"
 
 namespace leveldb {
 
@@ -26,12 +27,12 @@ class BlockBuilder {
 
   // REQUIRES: Finish() has not been called since the last call to Reset().
   // REQUIRES: key is larger than any previously added key
-  void Add(const Slice& key, const Slice& value);
+  void Add(const std::string_view& key, const std::string_view& value);
 
   // Finish building the block and return a slice that refers to the
   // block contents.  The returned slice will remain valid for the
   // lifetime of this builder or until Reset() is called.
-  Slice Finish();
+  std::string_view Finish();
 
   // Returns an estimate of the current (uncompressed) size of the block
   // we are building.
