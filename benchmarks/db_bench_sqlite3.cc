@@ -6,6 +6,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <print>
 
 #include "util/histogram.h"
 #include "util/random.h"
@@ -301,12 +302,13 @@ class Benchmark {
       }
     }
 
-    std::fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
-                 name.data(), (finish - start_) * 1e6 / done_,
-                 (message_.empty() ? "" : " "), message_.c_str());
+    std::println(stdout, "{:<12} : {:11.3f} micros/op;{}{}",
+      name,
+      (finish - start_) * 1e6 / done_,
+      (message_.empty() ? "" : " "), 
+      message_);
     if (FLAGS_histogram) {
-      std::fprintf(stdout, "Microseconds per op:\n%s\n",
-                   hist_.ToString().c_str());
+      std::println(stdout, "Microseconds per op:\n{}", hist_.ToString());
     }
     std::fflush(stdout);
   }

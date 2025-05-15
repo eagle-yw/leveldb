@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <print>
 
 #include "leveldb/cache.h"
 #include "leveldb/comparator.h"
@@ -330,13 +331,15 @@ class Stats {
       extra = rate;
     }
     AppendWithSpace(&extra, message_);
+    
+    std::println(stdout, "{:<12} : {:11.3f} micros/op;{}{}",
+      name,
+      seconds_ * 1e6 / done_,
+      (extra.empty() ? "" : " "), 
+      extra);
 
-    std::fprintf(stdout, "%-12s : %11.3f micros/op;%s%s\n",
-                 name.data(), seconds_ * 1e6 / done_,
-                 (extra.empty() ? "" : " "), extra.c_str());
     if (FLAGS_histogram) {
-      std::fprintf(stdout, "Microseconds per op:\n%s\n",
-                   hist_.ToString().c_str());
+      std::println("Microseconds per op:\n{}", hist_.ToString());
     }
     std::fflush(stdout);
   }
